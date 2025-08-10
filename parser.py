@@ -1,12 +1,13 @@
-
+import os
 import re
 import time
 import logging
 from importlib.metadata import files
 
-import requests
-from bs4 import BeautifulSoup
 import lxml
+import requests
+from dotenv import load_dotenv
+from bs4 import BeautifulSoup
 
 import config
 
@@ -27,6 +28,9 @@ url_login_get = "https://us.gblnet.net/"
 url_login = "https://us.gblnet.net/body/login"
 url = "https://us.gblnet.net/dashboard"
 
+load_dotenv()
+loginUS = os.getenv("loginUS")
+pswUS = os.getenv("pswUS")
 
 HEADERS = {
     "main": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:105.0) Gecko/20100101 Firefox/105.0"
@@ -35,8 +39,8 @@ HEADERS = {
 data_users = {
     "_csrf": '',
     "return_page": "",
-    "username": config.loginUS,
-    "password": config.pswUS
+    "username": loginUS,
+    "password": pswUS
 }
 
 session_users = requests.Session()

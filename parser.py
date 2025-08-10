@@ -57,9 +57,7 @@ def get_token():
 
     for script in scripts:
         if script.string is not None:
-            # print(script.string)
             script_lst = script.string.split(" ")
-            # print(script_lst)
             for num, val in enumerate(script_lst):
                 if val == "_csrf:":
                     csrf = script_lst[num+1]
@@ -75,7 +73,6 @@ def create_users_sessions():
             data_users["_csrf"] = csrf[1:-3]
             response_users2 = session_users.post(url_login, data=data_users, headers=HEADERS).text
             logger.info("Сессия Юзера создана 2")
-            # print(response_users2)
             return response_users2
         except ConnectionError:
             logger.info("Ошибка создания сессии")

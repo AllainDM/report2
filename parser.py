@@ -90,80 +90,80 @@ response_users = create_users_sessions()
 def get_address(list_service_masters):
     global response_users
     response_users = create_users_sessions()
-    print("Что у нас в аргументе")
-    print(list_service_masters)
-    print(f'list_service_masters {list_service_masters["list_repairs"]}')
+    logger.info("Что у нас в аргументе")
+    logger.info(list_service_masters)
+    logger.info(f'list_service_masters {list_service_masters["list_repairs"]}')
     list_repairs = list_service_masters["list_repairs"]
     id_ls = {"user_id": "", "user_ls": ""}
     for v in list_repairs:
-        print(f"v: {v}")
+        logger.info(f"v: {v}")
         service = v[1]
         # link = f"https://us.gblnet.net/oper/?core_section=task&action=show&id={service}"
         link = f"https://us.gblnet.net/task/{service}"
-        print("link 111")
-        print(link)
-        time.sleep(config.delay)  # Небольшая задержка
+        logger.info("link 111")
+        logger.info(link)
+        time.sleep(config.DELAY)  # Небольшая задержка
         try:
             HEADERS["_csrf"] = csrf[1:-3]
-            print(f"HEADERS: {HEADERS}")
-            print("Пытаемся получить страничку")
-            print(f"Токен: {csrf}")
+            logger.info(f"HEADERS: {HEADERS}")
+            logger.info("Пытаемся получить страничку")
+            logger.info(f"Токен: {csrf}")
             html = session_users.get(link, headers=HEADERS)
-            print(html)
+            logger.info(html)
             if html.status_code == 200:
-                print("Код ответа 200")
+                logger.info("Код ответа 200")
                 # soup = BeautifulSoup(html.text, 'lxml')
                 soup = BeautifulSoup(html.text, 'html.parser')
-                # print(f"soup {soup}")
+                # logger.info(f"soup {soup}")
                 table = soup.find('table', class_="j_table")
-                # print(f"table {table}")
+                # logger.info(f"table {table}")
                 if table is None:
                     v.append([" ", " ", " ", " "])
                     v.append("!!! Внимание, возможно не верный номер сервиса 1.")
                     v.append(" ")
                     v.append(" ")
-                    print("!!! Внимание, возможно не верный номер сервиса 1.")
+                    logger.info("!!! Внимание, возможно не верный номер сервиса 1.")
                 else:
                     # Так же сразу найдем тип задания. Главная страница - UserSide
                     table_type_task = soup.find(class_="label_h2")
                     table_type_task_span = table_type_task.find('span')
-                    print(f"Тут может быть таск: {table_type_task_span.text}")
+                    logger.info(f"Тут может быть таск: {table_type_task_span.text}")
                     table_a = table.find_all('a')
-                    print("Парсим ссылки")
-                    print(table_a)
+                    logger.info("Парсим ссылки")
+                    logger.info(table_a)
                     if table_a:
                         answer_parser_address = ""
                         for i in table_a:
                             if 'Россия' in i.text:
                                 answer_parser_address = parser_address(i.text)
                                 v.append(answer_parser_address)
-                                print(f"answer_parser_address: {answer_parser_address}")
+                                logger.info(f"answer_parser_address: {answer_parser_address}")
                                 # Так же в любом случае добавляем полученный тип задания.
                                 v.append(table_type_task_span.text)
 
                         if answer_parser_address == "":
-                            print("Адрес не найден")
+                            logger.info("Адрес не найден")
                             v.append([" ", " ", " ", " "])
                             v.append("!!! Внимание, возможно не верный номер сервиса 2.")
                             v.append(" ")
                             v.append(" ")
-                            print("!!! Внимание, возможно не верный номер сервиса 2.")
+                            logger.info("!!! Внимание, возможно не верный номер сервиса 2.")
                         # Еще раз отдельный цикл по ссылкам уже в поиске ид и лс
-                        print("Запишем индексы для ИД и ЛС.")
+                        logger.info("Запишем индексы для ИД и ЛС.")
                         user_id = ""
                         user_ls = ""
-                        print("Записали индексы для ИД и ЛС.")
+                        logger.info("Записали индексы для ИД и ЛС.")
                         for tab_test in table_a:
                             test_a = tab_test.text.split(" ")
                             for num, el in enumerate(test_a):
                                 if el == "ID:":
                                     user_id = test_a[num+1]
                                     id_ls["user_id"] = test_a[num+1]
-                                    print(f"Найден ид юзера: {id_ls['user_id']}")
+                                    logger.info(f"Найден ид юзера: {id_ls['user_id']}")
                                 if el == "договор:":
                                     user_id = test_a[num+1]
                                     id_ls["user_ls"] = test_a[num+1]
-                                    print(f"Найден лс юзера: {id_ls['user_ls']}")
+                                    logger.info(f"Найден лс юзера: {id_ls['user_ls']}")
 
                                 if el == "-":
                                     # ЛС может быть с _ это ЭтХоумовский логин, он не подходит
@@ -171,15 +171,15 @@ def get_address(list_service_masters):
                                     # Авансом привяжем как у ЕТ, позже обработаем не в этом цикле
                                     id_ls["user_ls"] = test_a[num+1]
                                     user_ls = test_a[num+1]
-                                    print(f"Найден лс юзера: {id_ls['user_ls']}")
+                                    logger.info(f"Найден лс юзера: {id_ls['user_ls']}")
                                     if "_" in check_ls[0]:
-                                        print("Это Этхоумовский логин")
+                                        logger.info("Это Этхоумовский логин")
                                         # В этом случае надо снова пройтись по таблице в поисках нужного класса
                                         table_for_ls = table.find(class_="taskCustomerFullInfo")
                                         table_for_ls = table_for_ls.text.split(" ")
                                         for num2, l in enumerate(table_for_ls):
                                             if l:
-                                                print(f"llllllll {l}")
+                                                logger.info(f"llllllll {l}")
                                                 if l == "счет:":
                                                     user_ls = table_for_ls[num2+1]
                                     else:
@@ -194,22 +194,22 @@ def get_address(list_service_masters):
                         v.append("!!! Внимание, возможно не верный номер сервиса 3.")
                         v.append(" ")
                         v.append(" ")
-                print("###############################################################################################")
-                print("###############################################################################################")
+                logger.info("###############################################################################################")
+                logger.info("###############################################################################################")
             else:
-                print("error")
+                logger.info("error")
         except requests.exceptions.TooManyRedirects as e:
-            print(f'{link} : {e}')
+            logger.info(f'{link} : {e}')
 
     return list_repairs, id_ls
 
 
 def parser_address(start_address):
-    print("Запускаем парсер адреса")
+    logger.info("Запускаем парсер адреса")
     full_address = start_address  # Полный адрес для сверки
-    print(f"full_address {full_address}")
+    logger.info(f"full_address {full_address}")
     address = start_address.split(",")
-    print(f"address {address}")
+    logger.info(f"address {address}")
 
     # Разберем улицу, для определения поселков.
     if address[3] == " Парголово" or \
@@ -250,9 +250,9 @@ def parser_address(start_address):
     # Ищем номер дома, при двойном адресе берем номер дома перед "вторым" адресом
     russia = start_address.replace(",", " ")
     russia = russia.split(" ")
-    print(f"russia {russia}")
+    logger.info(f"russia {russia}")
     russia_count = russia.count("Россия")
-    print(f"russia_count {russia_count}")
+    logger.info(f"russia_count {russia_count}")
 
     address_dom = ""
 
@@ -260,7 +260,7 @@ def parser_address(start_address):
         count_r = 0
         for num, el in enumerate(russia):
             if el == "Россия" and count_r == 1:
-                print(f"Найдено второе совпадение, номер элемента: {num}")
+                logger.info(f"Найдено второе совпадение, номер элемента: {num}")
                 address_dom = russia[num - 2]
                 break
             elif el == "Россия":

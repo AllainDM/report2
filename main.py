@@ -130,8 +130,7 @@ async def echo_mess(message: types.Message):
                 # Создадим папку за текущий день/месяц если не существует
                 if not os.path.exists(f"files/{t_o}/{month_year}/{date_now_year}"):
                     os.makedirs(f"files/{t_o}/{month_year}/{date_now_year}")
-                # await parser_report(t_o, message)
-                report = ReportHandler(message, t_o, date_now_year, month_year)
+                report = ReportHandler(message, t_o, date_now_year, date_now_year, month_year)
                 await report.process_report()
 
             except IndexError:

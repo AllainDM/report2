@@ -144,9 +144,6 @@ async def echo_mess(message: types.Message):
         # Обработка текста, для определения отчета мастеров.
         else:
             try:
-                # Создадим папку за текущий день/месяц если не существует
-                if not os.path.exists(f"files/{t_o}/{date_month_year}/{date_now_full}"):
-                    os.makedirs(f"files/{t_o}/{date_month_year}/{date_now_full}")
                 report = ReportParser(message, t_o, date_now_full, date_month_year)
                 await report.process_report()
 

@@ -1,6 +1,7 @@
-
+import os
 import json
 import logging
+import datetime
 
 from aiogram.types import FSInputFile
 
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 class ReportParser:
     def __init__(self, message, t_o, date_now_full, month_year):
         self.message = message  # Сообщение из ТГ
-        self.main_txt = ""      # Разобранное сообщения для обработки парсером
+        self.main_txt = []      # Разобранное сообщения для обработки парсером
         self.t_o = t_o          # Территориальное подразделение
         self.date_now_full = date_now_full      # Обсчитанная дата с годом
         self.month_year = month_year            # Обсчитанная дата месяц/год для папок
@@ -82,25 +83,66 @@ class ReportParser:
                    replace("нет:", "нет").
                    replace("он:", "он"))
         logger.info(f"pre_txt {pre_txt}")
+
         self.main_txt = pre_txt.split(":")
-        logger.info(f"self.main_txt {self.main_txt}")
+        # logger.info(f"self.main_txt {self.main_txt}")
 
     # Определение мастера
     async def _validate_master(self):
-        # Если в начале сообщения есть фамилия, то возьмем ее.
-        txt_soname_pre = self.main_txt[0].replace("\n", " ")
-        txt_soname = txt_soname_pre.split(" ")
-        if txt_soname[0][0:2].lower() != 'ет':
-            if txt_soname[0][0:2].lower() == "то":
-                raise ValueError("Необходимо указать фамилию мастера, отчет не сохранен.")
-                # await self.message.reply("Необходимо указать фамилию мастера, отчет не сохранен 1.")
-                # return
+        # Берем первый элемент сообщения и удаляем лишние пробелы
+        first_block = self.main_txt[0].strip()
+        # Разбиваем первый блок по пробелу, чтобы отделить дату от текста
+        first_element = first_block.split(" ")
+
+        # Проверяем, является ли первый элемент датой
+        try:
+            # Пытаемся преобразовать первый элемент в дату
+            report_date = datetime.datetime.strptime(first_element[0], "%d.%m.%Y").date()
+
+            # Если это дата, сохраняем её в двух форматах
+            self.date_now_full = report_date.strftime("%d.%m.%Y")
+            self.month_year = report_date.strftime("%m.%Y")
+
+            # Ищем фамилию мастера, начиная со второго элемента.
+            # Идем по списку, пока не найдем непустой элемент
+            master_index = 1
+            while master_index < len(first_element) and not first_element[master_index].strip():
+                master_index += 1
+
+            # Если такой элемент найден, берем его как фамилию
+            if master_index < len(first_element):
+                master = first_element[master_index].strip()
+                self.master = master.split(" ")[0].title()
             else:
-                self.master = txt_soname[0].title()
+                raise ValueError("После даты не найдена фамилия мастера.")
+
+        except ValueError:
+            # Если первый элемент — не дата, ищем фамилию в нем
+            if first_element[0:2].lower() == 'ет' or first_element[0:2].lower() == "то":
+                raise ValueError("Необходимо указать фамилию мастера, отчет не сохранен.")
+            else:
+                self.master = first_element.split(" ")[0].title()
+
+        # Финальная проверка, что фамилия найдена
         if self.master == "не указан" or self.master == "":
             raise ValueError("Необходимо указать фамилию мастера, отчет не сохранен.")
-            # await self.message.reply("Необходимо указать фамилию мастера, отчет не сохранен 2.")
-            # return
+
+
+        # # Если в начале сообщения есть фамилия, то возьмем ее.
+        # txt_soname_pre = self.main_txt[0].replace("\n", " ")
+        # txt_soname = txt_soname_pre.split(" ")
+        # if txt_soname[0][0:2].lower() != 'ет':
+        #     if txt_soname[0][0:2].lower() == "то":
+        #         raise ValueError("Необходимо указать фамилию мастера, отчет не сохранен.")
+        #         # await self.message.reply("Необходимо указать фамилию мастера, отчет не сохранен 1.")
+        #         # return
+        #     else:
+        #         self.master = txt_soname[0].title()
+        # if self.master == "не указан" or self.master == "":
+        #     raise ValueError("Необходимо указать фамилию мастера, отчет не сохранен.")
+        #     # await self.message.reply("Необходимо указать фамилию мастера, отчет не сохранен 2.")
+        #     # return
+
 
     # Обработка отчета для получения количества выполненных заявок
     async def _parse_report(self):
@@ -274,6 +316,10 @@ class ReportParser:
 
     # Сохранение отчета в json
     async def _save_report_json(self):
+        # Создадим папку за текущий день/месяц если не существует
+        if not os.path.exists(f"files/{self.t_o}/{self.month_year}/{self.date_now_full}"):
+            os.makedirs(f"files/{self.t_o}/{self.month_year}/{self.date_now_full}")
+
         # data = {**self.counters, "master": self.master, "list_repairs": self.list_repairs}
         data = {
             "et_int": self.et_int,
@@ -289,7 +335,7 @@ class ReportParser:
             "list_repairs": self.list_repairs
         }
         with open(f'files/{self.t_o}/{self.month_year}/{self.date_now_full}/{self.master}.json', 'w') as f:
-            json.dump(data, f)
+            json.dump(data, f, ensure_ascii=False, indent=4)
 
     # Отправим обработанный отчет текстов в чат
     async def _send_parsed_report_to_chat(self):

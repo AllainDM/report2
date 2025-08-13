@@ -17,8 +17,9 @@ from aiogram.enums import ParseMode
 import config
 import parser
 import to_exel
-from report_handler import ReportParser
 from report_handler import ReportCalc
+from report_handler import ReportWeek
+from report_handler import ReportParser
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -112,8 +113,12 @@ async def echo_mess(message: types.Message):
         # Запрос недельного отчета.
         # TODO реализовать логику.
         elif message.text.lower() == "неделя":
-            # Обработка запроса "неделя"
-            pass
+            # Для получения отчета только авторизованный админ
+            if user_id in config.USERS:
+                week = await get_last_full_week()
+                report = ReportWeek(message=message, t_o=t_o, files=files,
+                                     date_month_year=date_month_year, report_folder=report_folder)
+                await report.process_report()
 
         # Запрос отчета, за указанное количество дней назад
         elif message.text.isdigit() and 1 <= int(message.text) <= config.MAX_REPORT_DAYS_AGO:
@@ -150,6 +155,23 @@ async def echo_mess(message: types.Message):
             except IndexError:
                 logger.info("Тут видимо сообщение не относящееся к отчету.")
 
+
+async def get_last_full_week():
+    # Получаем текущую дату
+    today = datetime.now()
+    # Определяем день недели (Понедельник=0, Вторник=1, ..., Воскресенье=6)
+    today_weekday = today.weekday()
+    # Вычисляем количество дней, чтобы вернуться к прошлому понедельнику
+    days_to_subtract = today_weekday + 7
+    # Находим дату прошлого понедельника
+    last_monday = today - timedelta(days=days_to_subtract)
+    # Создаём список из 7 дат, начиная с прошлого понедельника
+    dates = []
+    for i in range(7):
+        current_date = last_monday + timedelta(days=i)
+        dates.append(current_date.strftime('%d.%m.%Y'))
+
+    return dates
 
 
 # Основная функция запуска бота

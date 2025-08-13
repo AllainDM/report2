@@ -76,16 +76,12 @@ class ReportParser:
         # TODO Добавить проверку если будут проблемы
         # Разбиваем по ":", так мы определим что это отчет.
         pre_txt_lower = self.message.text.lower()
-        logger.info(f"pre_txt_lower {pre_txt_lower}")
         # Мастера могут добавлять лишние ":" при перечислении.
         pre_txt = (pre_txt_lower.replace("тв:", "тв").
                    replace("ис:", "ис").
                    replace("нет:", "нет").
                    replace("он:", "он"))
-        logger.info(f"pre_txt {pre_txt}")
-
         self.main_txt = pre_txt.split(":")
-        # logger.info(f"self.main_txt {self.main_txt}")
 
     # Определение мастера
     async def _validate_master(self):
@@ -307,7 +303,7 @@ class ReportParser:
                           replace(".", " "))
 
         repairs_txt_et_list = repairs_txt_et.split(" ")
-        logger.info(f"repairs_txt_et {repairs_txt_et}")
+        # logger.info(f"repairs_txt_et {repairs_txt_et}")
 
         # Добавляем в список все 7-ми значные номера
         for i in repairs_txt_et_list:
@@ -436,4 +432,8 @@ class ReportCalc:
         # exel = open(f"files/{self.t_o}/{self.date_month_year}/{self.report_folder}.xls", "rb")
         # await self.message.answer_document(exel)
 
-
+# Сбор недельной статистики
+class ReportWeek:
+    def __init__(self, message, t_o, files, date_month_year, report_folder):
+        self.message = message              # Сообщение из ТГ
+        self.t_o = t_o                      # Территориальное отделение

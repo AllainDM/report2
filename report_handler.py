@@ -6,14 +6,13 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Класс отчета мастера
-class ReportHandler:
-    def __init__(self, message, t_o, date_now_year, date_now_no_year, month_year):
+# Класс парсера отчета мастера
+class ReportParser:
+    def __init__(self, message, t_o, date_now_year, month_year):
         self.message = message  # Сообщение из ТГ
         self.main_txt = ""      # Разобранное сообщения для обработки парсером
         self.t_o = t_o          # Территориальное подразделение
         self.date_now_year = date_now_year      # Обсчитанная дата с годом
-        self.date_now_no_year = date_now_year   # Обсчитанная дата без года
         self.month_year = month_year            # Обсчитанная дата месяц/год для папок
 
         # Счетчик количества сделанных заявок
@@ -233,6 +232,7 @@ class ReportHandler:
 
     # Составление списка номеров сервисов
     async def _collect_repair_numbers(self):
+        # Заменяем символы, чтобы номера сервисов гарантированно окружались пробелами
         repairs_txt_et = (self.main_txt[1].replace("(", " ").
                           replace(")", " ").
                           replace("\n", " ").
@@ -256,11 +256,12 @@ class ReportHandler:
         repairs_txt_et_list = repairs_txt_et.split(" ")
         logger.info(f"repairs_txt_et {repairs_txt_et}")
 
+        # Добавляем в список все 7-ми значные номера
         for i in repairs_txt_et_list:
             if len(i) == 7 and i.isnumeric():
                 self.list_repairs.append(['ЕТ', i, self.master])
 
-    # Сохранение отчета
+    # Сохранение отчета в json
     async def _save_report(self):
         # data = {**self.counters, "master": self.master, "list_repairs": self.list_repairs}
         data = {
@@ -281,7 +282,7 @@ class ReportHandler:
 
     # Отправим обработанный отчет текстов в чат
     async def _send_parsed_report_to_chat(self):
-        answer = (f"{self.t_o} {self.date_now_no_year}. Мастер {self.master} \n\n"
+        answer = (f"{self.t_o} {self.date_now_year}. Мастер {self.master} \n\n"
                   f"Интернет {self.et_int}"
                   f"({self.et_int_pri}), "
                   f"ТВ {self.et_tv}({self.et_tv_pri}), "
@@ -290,4 +291,69 @@ class ReportHandler:
                   f"сервис ТВ {self.et_serv_tv}")
 
         await self.message.answer(answer)
+
+# Класс вывода отчета
+class ReportCalc:
+    def __init__(self, message, t_o, files, month_year, report_folder):
+        self.message = message              # Сообщение из ТГ
+        self.t_o = t_o                      # Территориальное отделение
+        self.files = files                  # Список с файлами в папке с отчетами за день
+        self.month_year = month_year        # Имя папки(месяц/год) с отчетами за месяц
+        self.report_folder = report_folder  # Имя папки(день/месяц) с отчетами за день
+
+        self.num_rep = 0        # Количество отчетов для сверки.
+        self.list_masters = []  # Список мастеров в отчете, для сверки.
+
+        self.to_save = {
+            "et_int": 0,
+            "et_int_pri": 0,
+            "et_tv": 0,
+            "et_tv_pri": 0,
+            "et_dom": 0,
+            "et_dom_pri": 0,
+            "et_serv": 0,
+            "et_serv_tv": 0,
+            "list_repairs": [],
+        }
+
+    # Запуск всех методов для обработки обсчета ответов
+    async def process_report(self):
+        await self._read_jsons()            # Чтение файлов json в папке
+        await self._send_answer_to_chat()   # Отправка ответа в чат
+        await self._save_report()
+
+    # Чтение файлов с отчетами за день. Извлечение количества выполненных заявок и списка номеров заданий.
+    async def _read_jsons(self):
+        for file in self.files:
+            if file[-4:] == "json":
+                with open(f'files/{self.t_o}/{self.month_year}/{self.report_folder}/{file}', 'r', encoding='utf-8') as outfile:
+                    data = json.loads(outfile.read())
+                    self.to_save["et_int"] += data["et_int"]
+                    self.to_save["et_int_pri"] += data["et_int_pri"]
+                    self.to_save["et_tv"] += data["et_tv"]
+                    self.to_save["et_tv_pri"] += data["et_tv_pri"]
+                    self.to_save["et_dom"] += data["et_dom"]
+                    self.to_save["et_dom_pri"] += data["et_dom_pri"]
+                    self.to_save["et_serv"] += data["et_serv"]
+                    self.to_save["et_serv_tv"] += data["et_serv_tv"]
+                    self.to_save["list_repairs"] += data["list_repairs"] # Сложим же все номера заданий
+
+                    self.num_rep += 1  # Добавим счетчик количества посчитанных
+                    self.list_masters.append(data["master"])  # Добавим фамилию мастера
+
+    # Отправим обработанный отчет текстов в чат
+    async def _send_answer_to_chat(self):
+        # Выведем имена мастеров для сверки
+        answer = "Получены отчеты: \n"
+        for master in self.list_masters:
+            answer += f'{master} \n'
+        await self.message.answer(answer)
+
+    # Сохранение отчета
+    async def _save_report(self):
+        # Сохраним в файл
+        with open(f'files/{self.t_o}/{self.month_year}/{self.report_folder}.json', 'w') as outfile:
+            json.dump(self.to_save, outfile, sort_keys=False, ensure_ascii=False, indent=4, separators=(',', ': '))
+
+
 

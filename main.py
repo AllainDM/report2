@@ -16,7 +16,9 @@ from aiogram.enums import ParseMode
 
 import config
 import parser
-from report_handler import ReportHandler
+import to_exel
+from report_handler import ReportParser
+from report_handler import ReportCalc
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -90,7 +92,7 @@ async def echo_mess(message: types.Message):
             t_o = "ТО Восток"
 
         # Пересчет даты под запрос.
-        # TODO возможно стоит перенести логику определения даты.
+        # TODO возможно стоит перенести логику определения даты. Убрать лишние определения.
         date_now = datetime.now()
         logger.info(f"Текущая дата: {date_now}")
         date_ago = date_now - timedelta(hours=config.HOUR)  # здесь мы выставляем минус 15 часов
@@ -117,11 +119,23 @@ async def echo_mess(message: types.Message):
         elif message.text.isdigit() and 1 <= int(message.text) <= config.MAX_REPORT_DAYS_AGO:
             # Для получения отчета только авторизованный админ
             if user_id in config.USERS:
+                # Поправим дату под запрос
                 days_to_subtract = int(message.text) - 1
                 date_ago = date_ago - timedelta(days=days_to_subtract)
                 logger.info(f"Новая дата: {date_ago}")
                 date_now_year = date_ago.strftime("%d.%m.%Y")
                 month_year = date_ago.strftime("%m.%Y")
+                # Для отчета за день одна папка с текущей датой
+                report_folders = [date_now_year]
+                for report_folder in report_folders:
+                    await message.answer(f"Готовим отчёт за {report_folder}")
+                    if os.path.exists(f"files/{t_o}/{month_year}/{report_folder}"):
+                        files = os.listdir(f"files/{t_o}/{month_year}/{report_folder}")
+                        await message.answer(f"Найдено {len(files)} файл(ов).")
+                        reports = ReportCalc(message=message, t_o=t_o, files=files, month_year=month_year, report_folder=report_folder)
+                        await reports.process_report()
+                    else:
+                        await message.answer(f"Папка {report_folder} не найдена.")
 
 
         # Обработка текста, для определения отчета мастеров.
@@ -130,7 +144,7 @@ async def echo_mess(message: types.Message):
                 # Создадим папку за текущий день/месяц если не существует
                 if not os.path.exists(f"files/{t_o}/{month_year}/{date_now_year}"):
                     os.makedirs(f"files/{t_o}/{month_year}/{date_now_year}")
-                report = ReportHandler(message, t_o, date_now_year, date_now_year, month_year)
+                report = ReportParser(message, t_o, date_now_year, month_year)
                 await report.process_report()
 
             except IndexError:

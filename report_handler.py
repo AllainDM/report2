@@ -13,11 +13,11 @@ logger = logging.getLogger(__name__)
 
 # Класс парсера отчета мастера
 class ReportParser:
-    def __init__(self, message, t_o, date_now_year, month_year):
+    def __init__(self, message, t_o, date_now_full, month_year):
         self.message = message  # Сообщение из ТГ
         self.main_txt = ""      # Разобранное сообщения для обработки парсером
         self.t_o = t_o          # Территориальное подразделение
-        self.date_now_year = date_now_year      # Обсчитанная дата с годом
+        self.date_now_full = date_now_full      # Обсчитанная дата с годом
         self.month_year = month_year            # Обсчитанная дата месяц/год для папок
 
         # Счетчик количества сделанных заявок
@@ -57,13 +57,17 @@ class ReportParser:
 
     # Запуск всех методов для обработки отчета
     async def process_report(self):
-        await self._parse_message()     # Обработка сообщения, разделение по ":"
-        await self._validate_master()   # Если не указана фамилия, обрабатывать дальше нет смысла.
-        await self._parse_report()      # Сбор количества выполненных заявок
-        await self._validate_error()    # Обработка ошибок, отсутствия необходимых пунктов
-        await self._collect_repair_numbers()        # Составление списка номеров сервисов
-        await self._save_report_json()
-        await self._send_parsed_report_to_chat()    # Отправим обработанный отчет текстов в чат
+        try:
+            await self._parse_message()     # Обработка сообщения, разделение по ":"
+            await self._validate_master()   # Если не указана фамилия, обрабатывать дальше нет смысла.
+            await self._parse_report()      # Сбор количества выполненных заявок
+            await self._validate_error()    # Обработка ошибок, отсутствия необходимых пунктов
+            await self._collect_repair_numbers()        # Составление списка номеров сервисов
+            await self._save_report_json()
+            await self._send_parsed_report_to_chat()    # Отправим обработанный отчет текстов в чат
+        except ValueError as e:
+            await self.message.reply(str(e))
+            return
 
     # Обработка сообщения, разделение по ":"
     async def _parse_message(self):
@@ -88,13 +92,15 @@ class ReportParser:
         txt_soname = txt_soname_pre.split(" ")
         if txt_soname[0][0:2].lower() != 'ет':
             if txt_soname[0][0:2].lower() == "то":
-                await self.message.reply("Необходимо указать фамилию мастера, отчет не сохранен.")
-                return
+                raise ValueError("Необходимо указать фамилию мастера, отчет не сохранен.")
+                # await self.message.reply("Необходимо указать фамилию мастера, отчет не сохранен 1.")
+                # return
             else:
                 self.master = txt_soname[0].title()
         if self.master == "не указан" or self.master == "":
-            await self.message.reply("Необходимо указать фамилию мастера, отчет не сохранен.")
-            return
+            raise ValueError("Необходимо указать фамилию мастера, отчет не сохранен.")
+            # await self.message.reply("Необходимо указать фамилию мастера, отчет не сохранен 2.")
+            # return
 
     # Обработка отчета для получения количества выполненных заявок
     async def _parse_report(self):
@@ -282,12 +288,12 @@ class ReportParser:
             "master": self.master,
             "list_repairs": self.list_repairs
         }
-        with open(f'files/{self.t_o}/{self.month_year}/{self.date_now_year}/{self.master}.json', 'w') as f:
+        with open(f'files/{self.t_o}/{self.month_year}/{self.date_now_full}/{self.master}.json', 'w') as f:
             json.dump(data, f)
 
     # Отправим обработанный отчет текстов в чат
     async def _send_parsed_report_to_chat(self):
-        answer = (f"{self.t_o} {self.date_now_year}. Мастер {self.master} \n\n"
+        answer = (f"{self.t_o} {self.date_now_full}. Мастер {self.master} \n\n"
                   f"Интернет {self.et_int}"
                   f"({self.et_int_pri}), "
                   f"ТВ {self.et_tv}({self.et_tv_pri}), "

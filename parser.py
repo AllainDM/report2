@@ -84,16 +84,13 @@ def create_users_sessions():
 response_users = create_users_sessions()
 
 
-
-
 # TODO необходимо будет сделать одну функция под множество запросов
-def get_address(list_service_masters):
+# TODO выпилить определение id_ls он не используется далее, данные берутся где-то(!) в другом месте.
+async def get_address(list_repairs):
     global response_users
     response_users = create_users_sessions()
     logger.info("Что у нас в аргументе")
-    logger.info(list_service_masters)
-    logger.info(f'list_service_masters {list_service_masters["list_repairs"]}')
-    list_repairs = list_service_masters["list_repairs"]
+    logger.info(list_repairs)
     id_ls = {"user_id": "", "user_ls": ""}
     for v in list_repairs:
         logger.info(f"v: {v}")
@@ -201,7 +198,8 @@ def get_address(list_service_masters):
         except requests.exceptions.TooManyRedirects as e:
             logger.info(f'{link} : {e}')
 
-    return list_repairs, id_ls
+    # return list_repairs, id_ls
+    return list_repairs
 
 
 def parser_address(start_address):

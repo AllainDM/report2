@@ -2,6 +2,11 @@
 import json
 import logging
 
+from aiogram.types import FSInputFile
+
+import parser
+import to_exel
+
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -57,7 +62,8 @@ class ReportParser:
         await self._parse_report()      # Сбор количества выполненных заявок
         await self._validate_error()    # Обработка ошибок, отсутствия необходимых пунктов
         await self._collect_repair_numbers()        # Составление списка номеров сервисов
-        await self._save_report()
+        await self._save_report_json()
+        await self._save_report_exel()
         await self._send_parsed_report_to_chat()    # Отправим обработанный отчет текстов в чат
 
     # Обработка сообщения, разделение по ":"
@@ -262,7 +268,7 @@ class ReportParser:
                 self.list_repairs.append(['ЕТ', i, self.master])
 
     # Сохранение отчета в json
-    async def _save_report(self):
+    async def _save_report_json(self):
         # data = {**self.counters, "master": self.master, "list_repairs": self.list_repairs}
         data = {
             "et_int": self.et_int,
@@ -294,15 +300,16 @@ class ReportParser:
 
 # Класс вывода отчета
 class ReportCalc:
-    def __init__(self, message, t_o, files, month_year, report_folder):
+    def __init__(self, message, t_o, files, date_month_year, report_folder):
         self.message = message              # Сообщение из ТГ
         self.t_o = t_o                      # Территориальное отделение
         self.files = files                  # Список с файлами в папке с отчетами за день
-        self.month_year = month_year        # Имя папки(месяц/год) с отчетами за месяц
-        self.report_folder = report_folder  # Имя папки(день/месяц) с отчетами за день
+        self.date_month_year = date_month_year  # Имя папки(месяц/год) с отчетами за месяц
+        self.report_folder = report_folder      # Имя папки(день/месяц/год) с отчетами за день
 
         self.num_rep = 0        # Количество отчетов для сверки.
         self.list_masters = []  # Список мастеров в отчете, для сверки.
+        self.parser_answer = [] # Ответ парсера адресов по номерам
 
         self.to_save = {
             "et_int": 0,
@@ -319,14 +326,16 @@ class ReportCalc:
     # Запуск всех методов для обработки обсчета ответов
     async def process_report(self):
         await self._read_jsons()            # Чтение файлов json в папке
-        await self._send_answer_to_chat()   # Отправка ответа в чат
-        await self._save_report()
+        await self._send_answer_to_chat()   # Отправка ответа со списком мастеров в чат
+        await self._save_report_json()
+        await self._save_report_exel()
+        await self._send_exel_to_chat()
 
     # Чтение файлов с отчетами за день. Извлечение количества выполненных заявок и списка номеров заданий.
     async def _read_jsons(self):
         for file in self.files:
             if file[-4:] == "json":
-                with open(f'files/{self.t_o}/{self.month_year}/{self.report_folder}/{file}', 'r', encoding='utf-8') as outfile:
+                with open(f'files/{self.t_o}/{self.date_month_year}/{self.report_folder}/{file}', 'r', encoding='utf-8') as outfile:
                     data = json.loads(outfile.read())
                     self.to_save["et_int"] += data["et_int"]
                     self.to_save["et_int_pri"] += data["et_int_pri"]
@@ -349,11 +358,27 @@ class ReportCalc:
             answer += f'{master} \n'
         await self.message.answer(answer)
 
-    # Сохранение отчета
-    async def _save_report(self):
-        # Сохраним в файл
-        with open(f'files/{self.t_o}/{self.month_year}/{self.report_folder}.json', 'w') as outfile:
+    # Сохранение отчета в json
+    async def _save_report_json(self):
+        # Сохраним в json файл итоговый результат
+        with open(f'files/{self.t_o}/{self.date_month_year}/{self.report_folder}.json', 'w') as outfile:
             json.dump(self.to_save, outfile, sort_keys=False, ensure_ascii=False, indent=4, separators=(',', ': '))
 
+    # Сохранение отчета в exel
+    async def _save_report_exel(self):
+        # Получим обработанный список из парсера
+        self.parser_answer = await parser.get_address(self.to_save["list_repairs"])
+        # Сохраним ексель файл с номерами ремонтов
+        await to_exel.save_to_exel(list_to_exel=self.parser_answer, t_o=self.t_o,
+                                   full_date=self.report_folder, date_month_year=self.date_month_year)
+
+    # Отправка exel файла в чат
+    async def _send_exel_to_chat(self):
+        # Попробуем отправить файл
+        file = FSInputFile(f"files/{self.t_o}/{self.date_month_year}/{self.report_folder}.xls",
+                           filename=f"{self.report_folder}.xls")
+        await self.message.answer_document(file)
+        # exel = open(f"files/{self.t_o}/{self.date_month_year}/{self.report_folder}.xls", "rb")
+        # await self.message.answer_document(exel)
 
 

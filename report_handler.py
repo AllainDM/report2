@@ -63,7 +63,6 @@ class ReportParser:
         await self._validate_error()    # Обработка ошибок, отсутствия необходимых пунктов
         await self._collect_repair_numbers()        # Составление списка номеров сервисов
         await self._save_report_json()
-        await self._save_report_exel()
         await self._send_parsed_report_to_chat()    # Отправим обработанный отчет текстов в чат
 
     # Обработка сообщения, разделение по ":"
@@ -327,9 +326,10 @@ class ReportCalc:
     async def process_report(self):
         await self._read_jsons()            # Чтение файлов json в папке
         await self._send_answer_to_chat()   # Отправка ответа со списком мастеров в чат
-        await self._save_report_json()
-        await self._save_report_exel()
-        await self._send_exel_to_chat()
+        await self._save_report_json()      # Сохраним в json общее количество выполненных задач и все их номера
+        await self._parser_address()        # Получим адреса и типы всех задач
+        await self._save_report_exel()      # Сохраним результат парсера в ексель
+        await self._send_exel_to_chat()     # Отправим ексель файл в чат тг
 
     # Чтение файлов с отчетами за день. Извлечение количества выполненных заявок и списка номеров заданий.
     async def _read_jsons(self):
@@ -364,20 +364,23 @@ class ReportCalc:
         with open(f'files/{self.t_o}/{self.date_month_year}/{self.report_folder}.json', 'w') as outfile:
             json.dump(self.to_save, outfile, sort_keys=False, ensure_ascii=False, indent=4, separators=(',', ': '))
 
-    # Сохранение отчета в exel
-    async def _save_report_exel(self):
+    # Получение адресов по списку номеров заданий
+    async def _parser_address(self):
         # Получим обработанный список из парсера
         self.parser_answer = await parser.get_address(self.to_save["list_repairs"])
+
+    # Сохранение отчета в exel
+    async def _save_report_exel(self):
         # Сохраним ексель файл с номерами ремонтов
         await to_exel.save_to_exel(list_to_exel=self.parser_answer, t_o=self.t_o,
                                    full_date=self.report_folder, date_month_year=self.date_month_year)
 
     # Отправка exel файла в чат
     async def _send_exel_to_chat(self):
-        # Попробуем отправить файл
         file = FSInputFile(f"files/{self.t_o}/{self.date_month_year}/{self.report_folder}.xls",
                            filename=f"{self.report_folder}.xls")
         await self.message.answer_document(file)
+        # Старый способ, не работает в новом aiogram
         # exel = open(f"files/{self.t_o}/{self.date_month_year}/{self.report_folder}.xls", "rb")
         # await self.message.answer_document(exel)
 

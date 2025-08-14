@@ -507,16 +507,7 @@ class MastersStatistic:
         self.month = month                      # Даты нужного месяца
         self.date_month_year = date_month_year  # Имя папки(месяц/год) с отчетами за месяц
 
-        self.to_save = {
-            "et_int": 0,
-            "et_int_pri": 0,
-            "et_tv": 0,
-            "et_tv_pri": 0,
-            "et_dom": 0,
-            "et_dom_pri": 0,
-            "et_serv": 0,
-            "et_serv_tv": 0,
-        }
+        self.masters = {}
 
     # Запуск всех методов для обработки обсчета статистики
     async def process_report(self):
@@ -538,28 +529,49 @@ class MastersStatistic:
     async def _read_jsons(self, files, day):
         for file in files:
             if file[-4:] == "json":
+                master = file[:-5]
                 with open(f'files/{self.t_o}/{self.date_month_year}/{day}/{file}', 'r',
                           encoding='utf-8') as outfile:
                     data = json.loads(outfile.read())
-                    self.to_save["et_int"] += data["et_int"]
-                    self.to_save["et_int_pri"] += data["et_int_pri"]
-                    self.to_save["et_tv"] += data["et_tv"]
-                    self.to_save["et_tv_pri"] += data["et_tv_pri"]
-                    self.to_save["et_dom"] += data["et_dom"]
-                    self.to_save["et_dom_pri"] += data["et_dom_pri"]
-                    self.to_save["et_serv"] += data["et_serv"]
-                    self.to_save["et_serv_tv"] += data["et_serv_tv"]
+                    if master not in self.masters:
+                        self.masters[master] = {
+                            "et_int": 0,
+                            "et_int_pri": 0,
+                            "et_tv": 0,
+                            "et_tv_pri": 0,
+                            "et_dom": 0,
+                            "et_dom_pri": 0,
+                            "et_serv": 0,
+                            "et_serv_tv": 0,
+                            "all_tasks": 0,
+                            "days": 0,
+                        }
+                    self.masters[master]["et_int"] += data["et_int"]
+                    self.masters[master]["et_int_pri"] += data["et_int_pri"]
+                    self.masters[master]["et_tv"] +=  data["et_tv"]
+                    self.masters[master]["et_tv_pri"] += data["et_tv_pri"]
+                    self.masters[master]["et_dom"] += data["et_dom"]
+                    self.masters[master]["et_dom_pri"] += data["et_dom_pri"]
+                    self.masters[master]["et_serv"] += data["et_serv"]
+                    self.masters[master]["et_serv_tv"] += data["et_serv_tv"]
+                    self.masters[master]["all_tasks"] += data["et_int"] + data["et_tv"] + data["et_dom"] + data["et_serv"] + data["et_serv_tv"]
+                    self.masters[master]["days"] += 1
 
     # Отправка ответа в тг
     async def _send_answer_to_chat(self):
-        answer = (f"Статистика за: {self.month[0]} - {self.month[-1]} \n\n"
-                  f"Выполнено: \n"
-                  f"Интернет {self.to_save["et_int"]} "
-                  f"({self.to_save["et_int_pri"]}), \n"
-                  f"ТВ {self.to_save["et_tv"]}({self.to_save["et_tv_pri"]}), \n"
-                  f"домофон {self.to_save["et_dom"]}({self.to_save["et_dom_pri"]}), \n"
-                  f"сервис {self.to_save["et_serv"]}, \n"
-                  f"сервис ТВ {self.to_save["et_serv_tv"]}")
+        for master in self.masters:
+            answer = (f"{master} \n\n"
+                      # f"Выполнено: \n"
+                      f"Интернет {self.masters[master]["et_int"]} "
+                      f"({self.masters[master]["et_int_pri"]}), \n"
+                      f"ТВ {self.masters[master]["et_tv"]}({self.masters[master]["et_tv_pri"]}), \n"
+                      f"Домофон {self.masters[master]["et_dom"]}({self.masters[master]["et_dom_pri"]}), \n"
+                      f"Сервис {self.masters[master]["et_serv"]}, \n"
+                      f"Сервис ТВ {self.masters[master]["et_serv_tv"]} \n\n"
+                      f"Всего выполнено: {self.masters[master]["all_tasks"]} \n"
+                      f"Отработано смен: {self.masters[master]["days"]} \n"
+                      f"Среднее за смену: {round(self.masters[master]["all_tasks"]/self.masters[master]["days"], 1)} \n"
+                      )
 
-        await self.message.answer(answer)
+            await self.message.answer(answer)
 

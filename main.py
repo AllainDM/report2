@@ -116,8 +116,7 @@ async def echo_mess(message: types.Message):
             # Для получения отчета только авторизованный админ
             if user_id in config.USERS:
                 week = await get_last_full_week()
-                report = ReportWeek(message=message, t_o=t_o, files=files,
-                                     date_month_year=date_month_year, report_folder=report_folder)
+                report = ReportWeek(message=message, t_o=t_o, week=week, date_month_year=date_month_year)
                 await report.process_report()
 
         # Запрос отчета, за указанное количество дней назад

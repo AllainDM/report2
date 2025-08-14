@@ -67,12 +67,17 @@ async def cmd_start(message: types.Message):
 # Статистика по мастерам одного ТО за месяц. !!! Внимание, это не аналог отчета за неделю.
 @dp.message(Command("month", "месяц"))
 async def month_stats(message: types.Message):
-    # Получим ТО по группе или по пользователю
-    t_o = await get_to(message)
-    if t_o:  # Защита от незарегистрированных пользователей и чатов.
-        month = await get_month_dates()  # Список всех дат в месяце
-        statistic = MastersStatistic(message=message, t_o=t_o, month=month)
-        await statistic.process_report()
+    # Узнаем ид пользователя.
+    user_id = message.from_user.id
+    # Для получения общей статистики только авторизованный админ
+    if user_id in config.USERS:
+        # Получим ТО по группе или по пользователю
+        t_o = await get_to(message)
+        if t_o:  # ТО должно быть, если пользователь уже определен, но для исключения ошибок
+            await message.answer(f"📊 Подготовка статистики за месяц для {t_o}")
+            month = await get_month_dates()  # Список всех дат в месяце
+            statistic = MastersStatistic(message=message, t_o=t_o, month=month)
+            await statistic.process_report()
 
 # Статистика по выбранному мастеру за месяц.
 @dp.message(Command("master", "мастер"))
@@ -83,8 +88,7 @@ async def month_stats(message: types.Message):
         args = message.text.split(maxsplit=1)  # Разделяем только на 2 части
         if len(args) > 1:
             one_master = args[1].title()
-            await message.answer(f"📊 Статистика за месяц для {one_master}")
-
+            await message.answer(f"📊 Подготовка статистики за месяц для {one_master}")
             month = await get_month_dates()  # Список всех дат в месяце
             statistic = OneMasterStatistic(message=message, one_master=one_master, month=month)
             await statistic.process_report()
@@ -108,10 +112,7 @@ async def echo_mess(message: types.Message):
         # Обработка текстовых команд.
         # Запрос выписок из отчетов с привлеченными
         if message.text.lower() == "привлеченные":
-            # Для получения папки месяца привлеченных вычтем 8 дней(максимальный срок, когда они должны быть уже сданы)
-            date_ago = date_ago - timedelta(8)
-            date_now_full = date_ago.strftime("%d.%m.%Y")
-            date_month_year = date_ago.strftime("%m.%Y")
+            ...
 
         # Запрос недельного отчета.
         elif message.text.lower() == "неделя":

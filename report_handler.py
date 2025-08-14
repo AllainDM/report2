@@ -1,7 +1,6 @@
 import os
 import json
 import logging
-# import datetime
 from datetime import datetime, timedelta
 
 from aiogram.types import FSInputFile
@@ -14,7 +13,7 @@ import to_exel
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Класс парсера отчета мастера
+# Класс парсера отчета из сообщения мастера
 class ReportParser:
     def __init__(self, message, t_o, date_now_full, month_year):
         self.message = message  # Сообщение из ТГ
@@ -95,7 +94,7 @@ class ReportParser:
         # Проверяем, является ли первый элемент датой
         try:
             # Пытаемся преобразовать первый элемент в дату
-            report_date = datetime.datetime.strptime(first_element[0], "%d.%m.%Y").date()
+            report_date = datetime.strptime(first_element[0], "%d.%m.%Y").date()
 
             # Если это дата, сохраняем её в двух форматах
             self.date_now_full = report_date.strftime("%d.%m.%Y")
@@ -125,7 +124,7 @@ class ReportParser:
         if self.master == "не указан" or self.master == "":
             raise ValueError("Необходимо указать фамилию мастера, отчет не сохранен.")
 
-
+        # Старый функционал определения мастера без даты.
         # # Если в начале сообщения есть фамилия, то возьмем ее.
         # txt_soname_pre = self.main_txt[0].replace("\n", " ")
         # txt_soname = txt_soname_pre.split(" ")
@@ -343,10 +342,9 @@ class ReportParser:
                   f"домофон {self.et_dom}({self.et_dom_pri}), "
                   f"сервис {self.et_serv}, "
                   f"сервис ТВ {self.et_serv_tv}")
-
         await self.message.answer(answer)
 
-# Класс вывода отчета
+# Вывод отчета за день
 class ReportCalc:
     def __init__(self, message, t_o, files, date_month_year, report_folder):
         self.message = message              # Сообщение из ТГ
@@ -429,19 +427,14 @@ class ReportCalc:
         file = FSInputFile(f"files/{self.t_o}/{self.date_month_year}/{self.report_folder}.xls",
                            filename=f"{self.report_folder}.xls")
         await self.message.answer_document(file)
-        # Старый способ, не работает в новом aiogram
-        # exel = open(f"files/{self.t_o}/{self.date_month_year}/{self.report_folder}.xls", "rb")
-        # await self.message.answer_document(exel)
 
 # Сбор недельной статистики
 class ReportWeek:
     def __init__(self, message, t_o, week, date_month_year):
         self.message = message              # Сообщение из ТГ
         self.t_o = t_o                      # Территориальное отделение
-
         self.week = week                        # 7 дат прошлой недели
         self.date_month_year = date_month_year  # Имя папки(месяц/год) с отчетами за месяц
-
         self.to_save = {
             "et_int": 0,
             "et_int_pri": 0,
@@ -495,18 +488,15 @@ class ReportWeek:
                   f"домофон {self.to_save["et_dom"]}({self.to_save["et_dom_pri"]}), \n"
                   f"сервис {self.to_save["et_serv"]}, \n"
                   f"сервис ТВ {self.to_save["et_serv_tv"]}")
-
         await self.message.answer(answer)
 
-# Класс вывода статистики по всем мастерам в то
+# Вывода статистики по всем мастерам в то
 class MastersStatistic:
     def __init__(self, message, t_o, month):
         self.message = message              # Сообщение из ТГ
         self.t_o = t_o                      # Территориальное отделение
-
         self.month = month          # Даты нужного месяца
         self.date_month_year = ""   # Имя папки(месяц/год) с отчетами за месяц
-
         self.masters = {}
 
     # Запуск всех методов для обработки обсчета статистики
@@ -586,7 +576,7 @@ class MastersStatistic:
 
             await self.message.answer(answer)
 
-# Класс вывода статистики одного мастера по всем то
+# Вывода статистики одного мастера по всем то
 class OneMasterStatistic:
     def __init__(self, message, one_master, month):
         self.message = message      # Сообщение из ТГ
@@ -610,7 +600,7 @@ class OneMasterStatistic:
     # Запуск всех методов для обработки обсчета статистики
     async def process_report(self):
         await self._calc_date()             # Получение даты
-        await self._read_jsons()              # Перебор дней месяца
+        await self._read_jsons()            # Перебор дней месяца
         await self._send_answer_to_chat()   # Отправка ответа в тг
 
     # Получение даты для определения папки
@@ -642,7 +632,6 @@ class OneMasterStatistic:
 
     # Отправка ответа в тг
     async def _send_answer_to_chat(self):
-
         answer = (f"{self.one_master} \n\n"
                   # f"Выполнено: \n"
                   f"Интернет {self.masters[self.one_master]["et_int"]} "
@@ -655,6 +644,5 @@ class OneMasterStatistic:
                   f"Отработано смен: {self.masters[self.one_master]["days"]} \n"
                   f"Среднее за смену: {round(self.masters[self.one_master]["all_tasks"] / self.masters[self.one_master]["days"], 1)} \n"
                   )
-
         await self.message.answer(answer)
 

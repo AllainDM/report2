@@ -496,3 +496,70 @@ class ReportWeek:
                   f"сервис ТВ {self.to_save["et_serv_tv"]}")
 
         await self.message.answer(answer)
+
+
+# Класс вывода отчета
+class MastersStatistic:
+    def __init__(self, message, t_o, month, date_month_year):
+        self.message = message              # Сообщение из ТГ
+        self.t_o = t_o                      # Территориальное отделение
+
+        self.month = month                      # Даты нужного месяца
+        self.date_month_year = date_month_year  # Имя папки(месяц/год) с отчетами за месяц
+
+        self.to_save = {
+            "et_int": 0,
+            "et_int_pri": 0,
+            "et_tv": 0,
+            "et_tv_pri": 0,
+            "et_dom": 0,
+            "et_dom_pri": 0,
+            "et_serv": 0,
+            "et_serv_tv": 0,
+        }
+
+    # Запуск всех методов для обработки обсчета статистики
+    async def process_report(self):
+        await self._get_days()              # Перебор дней месяца
+        await self._send_answer_to_chat()   # Отправка ответа в тг
+
+    # Перебор дней месяца
+    async def _get_days(self):
+        for day in self.month:
+            await self._get_files(day)
+
+    # Получение всех файлов в папке одного дня
+    async def _get_files(self, day):
+        if os.path.exists(f"files/{self.t_o}/{self.date_month_year}/{day}"):
+            files = os.listdir(f"files/{self.t_o}/{self.date_month_year}/{day}")
+            await self._read_jsons(files, day)
+
+    # Обработка файлов одного дня
+    async def _read_jsons(self, files, day):
+        for file in files:
+            if file[-4:] == "json":
+                with open(f'files/{self.t_o}/{self.date_month_year}/{day}/{file}', 'r',
+                          encoding='utf-8') as outfile:
+                    data = json.loads(outfile.read())
+                    self.to_save["et_int"] += data["et_int"]
+                    self.to_save["et_int_pri"] += data["et_int_pri"]
+                    self.to_save["et_tv"] += data["et_tv"]
+                    self.to_save["et_tv_pri"] += data["et_tv_pri"]
+                    self.to_save["et_dom"] += data["et_dom"]
+                    self.to_save["et_dom_pri"] += data["et_dom_pri"]
+                    self.to_save["et_serv"] += data["et_serv"]
+                    self.to_save["et_serv_tv"] += data["et_serv_tv"]
+
+    # Отправка ответа в тг
+    async def _send_answer_to_chat(self):
+        answer = (f"Статистика за: {self.month[0]} - {self.month[-1]} \n\n"
+                  f"Выполнено: \n"
+                  f"Интернет {self.to_save["et_int"]} "
+                  f"({self.to_save["et_int_pri"]}), \n"
+                  f"ТВ {self.to_save["et_tv"]}({self.to_save["et_tv_pri"]}), \n"
+                  f"домофон {self.to_save["et_dom"]}({self.to_save["et_dom_pri"]}), \n"
+                  f"сервис {self.to_save["et_serv"]}, \n"
+                  f"сервис ТВ {self.to_save["et_serv_tv"]}")
+
+        await self.message.answer(answer)
+

@@ -20,6 +20,7 @@ import to_exel
 from report_handler import ReportCalc
 from report_handler import ReportWeek
 from report_handler import ReportParser
+from report_handler import MastersStatistic
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -111,13 +112,20 @@ async def echo_mess(message: types.Message):
             date_month_year = date_ago.strftime("%m.%Y")
 
         # Запрос недельного отчета.
-        # TODO реализовать логику.
         elif message.text.lower() == "неделя":
             # Для получения отчета только авторизованный админ
             if user_id in config.USERS:
                 week = await get_last_full_week()
                 report = ReportWeek(message=message, t_o=t_o, week=week, date_month_year=date_month_year)
                 await report.process_report()
+
+        # Статистика по мастерам за месяц. !!! Внимание, это не аналог отчета за неделю.
+        elif message.text.lower() == "месяц":
+            # Для получения отчета только авторизованный админ
+            if user_id in config.USERS:
+                month = await get_month_dates()
+                statistic = MastersStatistic(message=message, t_o=t_o, month=month, date_month_year=date_month_year)
+                await statistic.process_report()
 
         # Запрос отчета, за указанное количество дней назад
         elif message.text.isdigit() and 1 <= int(message.text) <= config.MAX_REPORT_DAYS_AGO:
@@ -154,7 +162,7 @@ async def echo_mess(message: types.Message):
             except IndexError:
                 logger.info("Тут видимо сообщение не относящееся к отчету.")
 
-
+# Составление списка дат для недельного отчета
 async def get_last_full_week():
     # Получаем текущую дату
     today = datetime.now()
@@ -170,6 +178,25 @@ async def get_last_full_week():
         current_date = last_monday + timedelta(days=i)
         dates.append(current_date.strftime('%d.%m.%Y'))
 
+    return dates
+
+# Составление списка дат для статистики мастеров за месяц
+async def get_month_dates():
+    # Получаем текущую дату
+    today = datetime.now().date()
+    # Для определения месяца вычисляем дату, которая была за указанное в конфиге дней назад.
+    target_date = today - timedelta(days=config.LAST_MONTH_DAYS_AGO)
+    # Определяем первый день целевого месяца
+    first_day_of_month = target_date.replace(day=1)
+    dates = []
+    current_date = first_day_of_month
+
+    # Цикл работает до тех пор, пока текущая дата меньше сегодняшней
+    while current_date < today:
+        # Проверяем, что дата относится к целевому месяцу
+        if current_date.month == target_date.month:
+            dates.append(current_date.strftime('%d.%m.%Y'))
+        current_date += timedelta(days=1)
     return dates
 
 

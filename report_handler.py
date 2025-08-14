@@ -13,6 +13,10 @@ import to_exel
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+class ValidationError(Exception):
+    """Исключение для ошибок валидации"""
+    pass
+
 # Класс парсера отчета из сообщения мастера
 class ReportParser:
     def __init__(self, message, t_o, date_now_full, month_year):
@@ -61,13 +65,18 @@ class ReportParser:
     async def process_report(self):
         try:
             await self._parse_message()     # Обработка сообщения, разделение по ":"
-            await self._validate_master()   # Если не указана фамилия, обрабатывать дальше нет смысла.
+            await self._validate_date()     # Проверка наличия даты перед фамилией
+            # Вызов из функции обработки даты
+            # await self._validate_master()   # Если не указана фамилия, обрабатывать дальше нет смысла
             await self._parse_report()      # Сбор количества выполненных заявок
             await self._validate_error()    # Обработка ошибок, отсутствия необходимых пунктов
             await self._collect_repair_numbers()        # Составление списка номеров сервисов
             await self._save_report_json()
             await self._send_parsed_report_to_chat()    # Отправим обработанный отчет текстов в чат
         except ValueError as e:
+            await self.message.reply(str(e))
+            return
+        except ValidationError as e:
             await self.message.reply(str(e))
             return
 
@@ -84,61 +93,48 @@ class ReportParser:
                    replace("он:", "он"))
         self.main_txt = pre_txt.split(":")
 
-    # Определение мастера
-    async def _validate_master(self):
+    # Проверка наличия даты перед фамилией
+    async def _validate_date(self):
         # Берем первый элемент сообщения и удаляем лишние пробелы
         first_block = self.main_txt[0].strip()
         # Разбиваем первый блок по пробелу, чтобы отделить дату от текста
         first_element = first_block.split(" ")
-
-        # Проверяем, является ли первый элемент датой
+        # Пытаемся преобразовать первый элемент в дату
         try:
-            # Пытаемся преобразовать первый элемент в дату
-            report_date = datetime.strptime(first_element[0], "%d.%m.%Y").date()
+            report_date = datetime.strptime(first_element[0].strip(), "%d.%m.%Y").date()
 
             # Если это дата, сохраняем её в двух форматах
             self.date_now_full = report_date.strftime("%d.%m.%Y")
             self.month_year = report_date.strftime("%m.%Y")
 
-            # Ищем фамилию мастера, начиная со второго элемента.
-            # Идем по списку, пока не найдем непустой элемент
-            master_index = 1
-            while master_index < len(first_element) and not first_element[master_index].strip():
-                master_index += 1
+            # В случае успеха всех проверок(!) смотрим кто прислал отчет, с датой разрешено только админам
+            user_id = self.message.from_user.id
+            if user_id not in config.USERS:
+                raise ValidationError("Отправка отчета с датой смертным запрещена, отчет не сохранен.")
 
-            # Если такой элемент найден, берем его как фамилию
-            if master_index < len(first_element):
-                master = first_element[master_index].strip()
-                self.master = master.split(" ")[0].title()
-            else:
-                raise ValueError("После даты не найдена фамилия мастера.")
+            new_main_list = self.main_txt[0].split()
+            print(f"new_main_list[1] {new_main_list[1]}")
+            await self._validate_master(new_main_list[1])
 
         except ValueError:
-            # Если первый элемент — не дата, ищем фамилию в нем
-            if first_element[0:2].lower() == 'ет' or first_element[0:2].lower() == "то":
-                raise ValueError("Необходимо указать фамилию мастера, отчет не сохранен.")
-            else:
-                self.master = first_element.split(" ")[0].title()
+            new_main_list = self.main_txt[0].split()
+            print(f"new_main_list[0] {new_main_list[0]}")
+            await self._validate_master(new_main_list[0])
 
-        # Финальная проверка, что фамилия найдена
-        if self.master == "не указан" or self.master == "":
-            raise ValueError("Необходимо указать фамилию мастера, отчет не сохранен.")
-
-        # Старый функционал определения мастера без даты.
-        # # Если в начале сообщения есть фамилия, то возьмем ее.
+    # Определение мастера
+    async def _validate_master(self, new_main_txt):
+        # Если в начале сообщения есть фамилия, то возьмем ее.
+        txt_soname_pre = new_main_txt.replace("\n", " ")
         # txt_soname_pre = self.main_txt[0].replace("\n", " ")
-        # txt_soname = txt_soname_pre.split(" ")
-        # if txt_soname[0][0:2].lower() != 'ет':
-        #     if txt_soname[0][0:2].lower() == "то":
-        #         raise ValueError("Необходимо указать фамилию мастера, отчет не сохранен.")
-        #         # await self.message.reply("Необходимо указать фамилию мастера, отчет не сохранен 1.")
-        #         # return
-        #     else:
-        #         self.master = txt_soname[0].title()
-        # if self.master == "не указан" or self.master == "":
-        #     raise ValueError("Необходимо указать фамилию мастера, отчет не сохранен.")
-        #     # await self.message.reply("Необходимо указать фамилию мастера, отчет не сохранен 2.")
-        #     # return
+        txt_soname = txt_soname_pre.split(" ")
+        if txt_soname[0][0:2].lower() != 'ет':
+            if txt_soname[0][0:2].lower() == "то":
+                raise ValidationError("Необходимо указать фамилию мастера, отчет не сохранен.")
+            else:
+                self.master = txt_soname[0].title()
+        if self.master == "не указан" or self.master == "":
+            raise ValidationError("Необходимо указать фамилию мастера, отчет не сохранен.")
+
 
     # Обработка отчета для получения количества выполненных заявок
     async def _parse_report(self):

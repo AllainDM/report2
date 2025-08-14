@@ -21,6 +21,7 @@ from report_handler import ReportCalc
 from report_handler import ReportWeek
 from report_handler import ReportParser
 from report_handler import MastersStatistic
+from report_handler import OneMasterStatistic
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -62,37 +63,33 @@ async def cmd_start(message: types.Message):
         logger.info(f"Запрос от пользователя {user_id}")
         await message.answer("Привет! Я бот короче...")
 
+# Статистика по мастерам одного ТО за месяц. !!! Внимание, это не аналог отчета за неделю.
+@dp.message(Command("month", "месяц"))
+async def month_stats(message: types.Message):
+    # Получим ТО по группе или по пользователю
+    t_o = get_to(message)
+    if t_o:  # Защита от незарегистрированных пользователей и чатов.
+        month = await get_month_dates()  # Список всех дат в месяце
+        statistic = MastersStatistic(message=message, t_o=t_o, month=month)
+        await statistic.process_report()
+
+# Статистика по выбранному мастеру за месяц.
+@dp.message(Command("master", "мастер"))
+async def month_stats(message: types.Message):
+    # Получим ТО по группе или по пользователю
+    t_o = get_to(message)
+    if t_o:  # Защита от незарегистрированных пользователей и чатов.
+        month = await get_month_dates()  # Список всех дат в месяце
+        statistic = OneMasterStatistic(message=message, t_o=t_o, month=month)
+        await statistic.process_report()
 
 # Основной обработчик сообщений. Отправка и запросы отчетов.
 @dp.message()
 async def echo_mess(message: types.Message):
-    # Получим ид пользователя и сравним со списком разрешенных в файле конфига
-    user_id = message.from_user.id
-    group_id = message.chat.id
-    group_id *= -1
-    logger.info(f"chat_id {group_id}")
-    logger.info(f"user_id {user_id}")
-    t_o = ""
-    if user_id in config.USERS or group_id in config.GROUPS:
-        # Определим ТО по ид юзера в телеграм 1240018773
-        # Приоритет группы потом юзеры?
-        if group_id == config.GROUP_ID_WEST:
-            t_o = "ТО Запад"
-        elif group_id == config.GROUP_ID_NORTH:
-            t_o = "ТО Север"
-        elif group_id == config.GROUP_ID_SOUTH:
-            t_o = "ТО Юг"
-        elif group_id == config.GROUP_ID_EAST:
-            t_o = "ТО Восток"
-        elif user_id in config.USERS_IN_WEST:
-            t_o = "ТО Запад"
-        elif user_id in config.USERS_IN_NORTH:
-            t_o = "ТО Север"
-        elif user_id in config.USERS_IN_SOUTH:
-            t_o = "ТО Юг"
-        elif user_id in config.USERS_IN_EAST:
-            t_o = "ТО Восток"
-
+    user_id = message.from_user.id  # id пользователя, часть запросов разрешены только руководителям.
+    # Получим ТО по группе или по пользователю
+    t_o = get_to(message)
+    if t_o:  # Защита от незарегистрированных пользователей и чатов.
         # Пересчет даты под запрос.
         # TODO возможно стоит перенести логику определения даты. Убрать лишние определения.
         date_now = datetime.now()
@@ -100,7 +97,6 @@ async def echo_mess(message: types.Message):
         date_ago = date_now - timedelta(hours=config.HOUR)  # здесь мы выставляем минус 15 часов
         logger.info(f"Новая дата: {date_ago}")
         date_now_full = date_ago.strftime("%d.%m.%Y")
-        date_now_no_year = date_ago.strftime("%d.%m")
         date_month_year = date_ago.strftime("%m.%Y")
 
         # Обработка текстовых команд.
@@ -115,7 +111,7 @@ async def echo_mess(message: types.Message):
         elif message.text.lower() == "неделя":
             # Для получения отчета только авторизованный админ
             if user_id in config.USERS:
-                week = await get_last_full_week()
+                week = await get_last_full_week()  # Получение списка дат в неделе(для перебора папок)
                 report = ReportWeek(message=message, t_o=t_o, week=week, date_month_year=date_month_year)
                 await report.process_report()
 
@@ -123,8 +119,8 @@ async def echo_mess(message: types.Message):
         elif message.text.lower() == "месяц":
             # Для получения отчета только авторизованный админ
             if user_id in config.USERS:
-                month = await get_month_dates()
-                statistic = MastersStatistic(message=message, t_o=t_o, month=month, date_month_year=date_month_year)
+                month = await get_month_dates()  # Получение списка дат в месяце(для перебора папок)
+                statistic = MastersStatistic(message=message, t_o=t_o, month=month)
                 await statistic.process_report()
 
         # Запрос отчета, за указанное количество дней назад
@@ -199,6 +195,32 @@ async def get_month_dates():
         current_date += timedelta(days=1)
     return dates
 
+# Определим ТО по пользователю или группе
+async def get_to(message):
+    # Получим ид пользователя и сравним со списком разрешенных в файле конфига
+    user_id = message.from_user.id
+    group_id = message.chat.id
+    group_id *= -1
+    t_o = False
+    if user_id in config.USERS or group_id in config.GROUPS:
+        # Приоритет группы потом юзеры? == да, для запросов другими начальниками
+        if group_id == config.GROUP_ID_WEST:
+            t_o = "ТО Запад"
+        elif group_id == config.GROUP_ID_NORTH:
+            t_o = "ТО Север"
+        elif group_id == config.GROUP_ID_SOUTH:
+            t_o = "ТО Юг"
+        elif group_id == config.GROUP_ID_EAST:
+            t_o = "ТО Восток"
+        elif user_id in config.USERS_IN_WEST:
+            t_o = "ТО Запад"
+        elif user_id in config.USERS_IN_NORTH:
+            t_o = "ТО Север"
+        elif user_id in config.USERS_IN_SOUTH:
+            t_o = "ТО Юг"
+        elif user_id in config.USERS_IN_EAST:
+            t_o = "ТО Восток"
+    return t_o
 
 # Основная функция запуска бота
 async def main():

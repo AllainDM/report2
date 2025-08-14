@@ -2,10 +2,12 @@ import os
 import json
 import logging
 import datetime
+from datetime import datetime, timedelta
 
 from aiogram.types import FSInputFile
 
 import parser
+import config
 import to_exel
 
 # Настройка логирования
@@ -138,7 +140,6 @@ class ReportParser:
         #     raise ValueError("Необходимо указать фамилию мастера, отчет не сохранен.")
         #     # await self.message.reply("Необходимо указать фамилию мастера, отчет не сохранен 2.")
         #     # return
-
 
     # Обработка отчета для получения количества выполненных заявок
     async def _parse_report(self):
@@ -497,22 +498,28 @@ class ReportWeek:
 
         await self.message.answer(answer)
 
-
-# Класс вывода отчета
+# Класс вывода статистики по всем мастерам в то
 class MastersStatistic:
-    def __init__(self, message, t_o, month, date_month_year):
+    def __init__(self, message, t_o, month):
         self.message = message              # Сообщение из ТГ
         self.t_o = t_o                      # Территориальное отделение
 
-        self.month = month                      # Даты нужного месяца
-        self.date_month_year = date_month_year  # Имя папки(месяц/год) с отчетами за месяц
+        self.month = month          # Даты нужного месяца
+        self.date_month_year = ""   # Имя папки(месяц/год) с отчетами за месяц
 
         self.masters = {}
 
     # Запуск всех методов для обработки обсчета статистики
     async def process_report(self):
+        await self._calc_date()             # Получение даты
         await self._get_days()              # Перебор дней месяца
         await self._send_answer_to_chat()   # Отправка ответа в тг
+
+    # Получение даты для определения папки
+    async def _calc_date(self):
+        date_now = datetime.now()
+        logger.info(f"Текущая дата: {date_now}")
+        self.date_month_year = date_now.strftime("%m.%Y")
 
     # Перебор дней месяца
     async def _get_days(self):
@@ -574,4 +581,46 @@ class MastersStatistic:
                       )
 
             await self.message.answer(answer)
+
+# Класс вывода статистики по всем мастерам в то
+class OneMasterStatistic:
+    def __init__(self, message, master, month, date_month_year):
+        self.message = message              # Сообщение из ТГ
+        self.master = master                      # Территориальное отделение
+
+        self.month = month                      # Даты нужного месяца
+        self.date_month_year = date_month_year  # Имя папки(месяц/год) с отчетами за месяц
+
+        self.masters = {}
+
+    # Запуск всех методов для обработки обсчета статистики
+    async def process_report(self):
+        await self._calc_date()             # Получение даты
+        await self._get_days()              # Перебор дней месяца
+        await self._send_answer_to_chat()   # Отправка ответа в тг
+
+    # Получение даты для определения папки
+    async def _calc_date(self):
+        date_now = datetime.now()
+        logger.info(f"Текущая дата: {date_now}")
+        self.date_month_year = date_now.strftime("%m.%Y")
+
+    # Перебор дней месяца
+    async def _get_days(self):
+        for day in self.month:
+            await self._get_files(day)
+
+    # Получение всех файлов в папке одного дня
+    async def _get_files(self, day):
+        if os.path.exists(f"files/{self.t_o}/{self.date_month_year}/{day}"):
+            files = os.listdir(f"files/{self.t_o}/{self.date_month_year}/{day}")
+            await self._read_jsons(files, day)
+
+    # Обработка файлов одного дня
+    async def _read_jsons(self, files, day):
+        ...
+
+    # Отправка ответа в тг
+    async def _send_answer_to_chat(self):
+        ...
 

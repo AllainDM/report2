@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-import datetime
+# import datetime
 from datetime import datetime, timedelta
 
 from aiogram.types import FSInputFile
@@ -518,22 +518,26 @@ class MastersStatistic:
     # Получение даты для определения папки
     async def _calc_date(self):
         date_now = datetime.now()
-        logger.info(f"Текущая дата: {date_now}")
+        logger.info(f"MastersStatistic Текущая дата: {date_now}")
         self.date_month_year = date_now.strftime("%m.%Y")
 
     # Перебор дней месяца
     async def _get_days(self):
         for day in self.month:
+            print(day)
             await self._get_files(day)
 
     # Получение всех файлов в папке одного дня
     async def _get_files(self, day):
+        print("_get_files")
         if os.path.exists(f"files/{self.t_o}/{self.date_month_year}/{day}"):
             files = os.listdir(f"files/{self.t_o}/{self.date_month_year}/{day}")
             await self._read_jsons(files, day)
 
     # Обработка файлов одного дня
     async def _read_jsons(self, files, day):
+        print("_read_jsons")
+        print(files)
         for file in files:
             if file[-4:] == "json":
                 master = file[:-5]
@@ -582,21 +586,31 @@ class MastersStatistic:
 
             await self.message.answer(answer)
 
-# Класс вывода статистики по всем мастерам в то
+# Класс вывода статистики одного мастера по всем то
 class OneMasterStatistic:
-    def __init__(self, message, master, month, date_month_year):
-        self.message = message              # Сообщение из ТГ
-        self.master = master                      # Территориальное отделение
-
-        self.month = month                      # Даты нужного месяца
-        self.date_month_year = date_month_year  # Имя папки(месяц/год) с отчетами за месяц
-
-        self.masters = {}
+    def __init__(self, message, one_master, month):
+        self.message = message      # Сообщение из ТГ
+        self.one_master = one_master
+        self.masters = {one_master: {
+            "et_int": 0,
+            "et_int_pri": 0,
+            "et_tv": 0,
+            "et_tv_pri": 0,
+            "et_dom": 0,
+            "et_dom_pri": 0,
+            "et_serv": 0,
+            "et_serv_tv": 0,
+            "all_tasks": 0,
+            "days": 0,
+        }}
+        self.month = month          # Даты нужного месяца
+        self.date_month_year = ""   # Имя папки(месяц/год) с отчетами за месяц
+        self.all_t_o = ["ТО Север", "ТО Юг", "ТО Запад", "ТО Восток"]
 
     # Запуск всех методов для обработки обсчета статистики
     async def process_report(self):
         await self._calc_date()             # Получение даты
-        await self._get_days()              # Перебор дней месяца
+        await self._read_jsons()              # Перебор дней месяца
         await self._send_answer_to_chat()   # Отправка ответа в тг
 
     # Получение даты для определения папки
@@ -605,22 +619,42 @@ class OneMasterStatistic:
         logger.info(f"Текущая дата: {date_now}")
         self.date_month_year = date_now.strftime("%m.%Y")
 
-    # Перебор дней месяца
-    async def _get_days(self):
-        for day in self.month:
-            await self._get_files(day)
-
-    # Получение всех файлов в папке одного дня
-    async def _get_files(self, day):
-        if os.path.exists(f"files/{self.t_o}/{self.date_month_year}/{day}"):
-            files = os.listdir(f"files/{self.t_o}/{self.date_month_year}/{day}")
-            await self._read_jsons(files, day)
-
-    # Обработка файлов одного дня
-    async def _read_jsons(self, files, day):
-        ...
+    # Обработка всех файлов в цикле то и дней месяца
+    async def _read_jsons(self):
+        for t_o in self.all_t_o:
+            for day in self.month:
+                try:
+                    with open(f'files/{t_o}/{self.date_month_year}/{day}/{self.one_master}.json', 'r',
+                              encoding='utf-8') as outfile:
+                        data = json.loads(outfile.read())
+                        self.masters[self.one_master]["et_int"] += data["et_int"]
+                        self.masters[self.one_master]["et_int_pri"] += data["et_int_pri"]
+                        self.masters[self.one_master]["et_tv"] +=  data["et_tv"]
+                        self.masters[self.one_master]["et_tv_pri"] += data["et_tv_pri"]
+                        self.masters[self.one_master]["et_dom"] += data["et_dom"]
+                        self.masters[self.one_master]["et_dom_pri"] += data["et_dom_pri"]
+                        self.masters[self.one_master]["et_serv"] += data["et_serv"]
+                        self.masters[self.one_master]["et_serv_tv"] += data["et_serv_tv"]
+                        self.masters[self.one_master]["all_tasks"] += data["et_int"] + data["et_tv"] + data["et_dom"] + data["et_serv"] + data["et_serv_tv"]
+                        self.masters[self.one_master]["days"] += 1
+                except FileNotFoundError:
+                    ...
 
     # Отправка ответа в тг
     async def _send_answer_to_chat(self):
-        ...
+
+        answer = (f"{self.one_master} \n\n"
+                  # f"Выполнено: \n"
+                  f"Интернет {self.masters[self.one_master]["et_int"]} "
+                  f"({self.masters[self.one_master]["et_int_pri"]}), \n"
+                  f"ТВ {self.masters[self.one_master]["et_tv"]}({self.masters[self.one_master]["et_tv_pri"]}), \n"
+                  f"Домофон {self.masters[self.one_master]["et_dom"]}({self.masters[self.one_master]["et_dom_pri"]}), \n"
+                  f"Сервис {self.masters[self.one_master]["et_serv"]}, \n"
+                  f"Сервис ТВ {self.masters[self.one_master]["et_serv_tv"]} \n\n"
+                  f"Всего выполнено: {self.masters[self.one_master]["all_tasks"]} \n"
+                  f"Отработано смен: {self.masters[self.one_master]["days"]} \n"
+                  f"Среднее за смену: {round(self.masters[self.one_master]["all_tasks"] / self.masters[self.one_master]["days"], 1)} \n"
+                  )
+
+        await self.message.answer(answer)
 

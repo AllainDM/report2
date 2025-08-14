@@ -6,6 +6,7 @@ import shutil
 import asyncio
 import logging
 from datetime import datetime, timedelta
+from doctest import master
 
 import xlwt
 from dotenv import load_dotenv
@@ -67,7 +68,7 @@ async def cmd_start(message: types.Message):
 @dp.message(Command("month", "месяц"))
 async def month_stats(message: types.Message):
     # Получим ТО по группе или по пользователю
-    t_o = get_to(message)
+    t_o = await get_to(message)
     if t_o:  # Защита от незарегистрированных пользователей и чатов.
         month = await get_month_dates()  # Список всех дат в месяце
         statistic = MastersStatistic(message=message, t_o=t_o, month=month)
@@ -77,18 +78,23 @@ async def month_stats(message: types.Message):
 @dp.message(Command("master", "мастер"))
 async def month_stats(message: types.Message):
     # Получим ТО по группе или по пользователю
-    t_o = get_to(message)
+    t_o = await get_to(message)
     if t_o:  # Защита от незарегистрированных пользователей и чатов.
-        month = await get_month_dates()  # Список всех дат в месяце
-        statistic = OneMasterStatistic(message=message, t_o=t_o, month=month)
-        await statistic.process_report()
+        args = message.text.split(maxsplit=1)  # Разделяем только на 2 части
+        if len(args) > 1:
+            one_master = args[1].title()
+            await message.answer(f"📊 Статистика за месяц для {one_master}")
+
+            month = await get_month_dates()  # Список всех дат в месяце
+            statistic = OneMasterStatistic(message=message, one_master=one_master, month=month)
+            await statistic.process_report()
 
 # Основной обработчик сообщений. Отправка и запросы отчетов.
 @dp.message()
 async def echo_mess(message: types.Message):
     user_id = message.from_user.id  # id пользователя, часть запросов разрешены только руководителям.
     # Получим ТО по группе или по пользователю
-    t_o = get_to(message)
+    t_o = await get_to(message)
     if t_o:  # Защита от незарегистрированных пользователей и чатов.
         # Пересчет даты под запрос.
         # TODO возможно стоит перенести логику определения даты. Убрать лишние определения.

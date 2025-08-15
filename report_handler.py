@@ -118,7 +118,6 @@ class ReportParser:
 
         except ValueError:
             new_main_list = self.main_txt[0].split()
-            print(f"new_main_list[0] {new_main_list[0]}")
             await self._validate_master(new_main_list[0])
 
     # Определение мастера
@@ -208,7 +207,6 @@ class ReportParser:
                         self.et_serv_flag = 1  # Флаг для проверки правильности отчета
                 except ValueError:
                     self.et_serv = 0
-                # logger.info(new_txt_list)
 
         # Вычисление привлеченных, а так же поиск ошибки отсутствия нужного количества слов "прив" в отчете.
         # Перебор отчета, первый привлеченный идет в интернет, второй в тв, третий в домофон.
@@ -219,7 +217,6 @@ class ReportParser:
         for num, val in enumerate(new_txt_list):
             if val[0:4].lower() == "прив":
                 if flag_priv_int == 0:  # Флаг привлеченного интернета
-                    # logger.info(f"тут привлеченный интернет {new_txt_list[num - 1]}")
                     flag_priv_int = 1
                     try:
                         self.et_int_pri = int(new_txt_list[num - 1])  # Перед "прив"
@@ -228,7 +225,6 @@ class ReportParser:
                     except ValueError:
                         self.et_int_pri = 0
                 elif flag_priv_tv == 0:  # Флаг привлеченного тв
-                    # logger.info(f"тут привлеченный тв {new_txt_list[num - 1]}")
                     flag_priv_tv = 1
                     try:
                         self.et_tv_pri = int(new_txt_list[num - 1])  # Перед "прив"
@@ -237,7 +233,6 @@ class ReportParser:
                     except ValueError:
                         self.et_tv_pri = 0
                 elif flag_priv_dom == 0:  # Флаг привлеченного домофона
-                    # logger.info(f"тут привлеченный домофон {new_txt_list[num - 1]}")
                     flag_priv_dom = 1
                     try:
                         self.et_dom_pri = int(new_txt_list[num - 1])  # Перед "прив"
@@ -299,7 +294,6 @@ class ReportParser:
                           replace(".", " "))
 
         repairs_txt_et_list = repairs_txt_et.split(" ")
-        # logger.info(f"repairs_txt_et {repairs_txt_et}")
 
         # Добавляем в список все 7-ми значные номера
         for i in repairs_txt_et_list:
@@ -510,20 +504,16 @@ class MastersStatistic:
     # Перебор дней месяца
     async def _get_days(self):
         for day in self.month:
-            print(day)
             await self._get_files(day)
 
     # Получение всех файлов в папке одного дня
     async def _get_files(self, day):
-        print("_get_files")
         if os.path.exists(f"files/{self.t_o}/{self.date_month_year}/{day}"):
             files = os.listdir(f"files/{self.t_o}/{self.date_month_year}/{day}")
             await self._read_jsons(files, day)
 
     # Обработка файлов одного дня
     async def _read_jsons(self, files, day):
-        print("_read_jsons")
-        print(files)
         for file in files:
             if file[-4:] == "json":
                 master = file[:-5]

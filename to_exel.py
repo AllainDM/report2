@@ -2,7 +2,6 @@ import json
 import xlwt
 
 async def save_to_exel(list_to_exel, t_o, full_date, date_month_year):
-    # print("Запуск функции сохранения в ексель файл.")
     wb = xlwt.Workbook()
     ws = wb.add_sheet(full_date)
     list_repairs_for_json = []
@@ -38,4 +37,3 @@ async def save_to_exel(list_to_exel, t_o, full_date, date_month_year):
         json.dump(list_repairs_for_json, outfile, sort_keys=False, ensure_ascii=False, indent=4, separators=(',', ': '))
 
     wb.save(f'files/{t_o}/{date_month_year}/{full_date}.xls')
-    # print("Документ сохранен")

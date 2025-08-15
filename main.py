@@ -1,12 +1,8 @@
 
 import os
-import time
-import json
-import shutil
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from doctest import master
 
 import xlwt
 from dotenv import load_dotenv
@@ -16,8 +12,6 @@ from aiogram.types import Message
 from aiogram.enums import ParseMode
 
 import config
-import parser
-import to_exel
 from report_handler import ReportCalc
 from report_handler import ReportWeek
 from report_handler import ReportParser
@@ -26,13 +20,6 @@ from report_handler import OneMasterStatistic
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
-
-logging.debug("Это отладочное сообщение")
-logging.info("Это информационное сообщение")
-logging.warning("Это предупреждение")
-logging.error("Это ошибка")
-logging.critical("Это критическая ошибка")
-
 logger = logging.getLogger(__name__)
 
 load_dotenv()
@@ -62,7 +49,7 @@ async def cmd_start(message: types.Message):
     # Авторизация
     if user_id in config.USERS:
         logger.info(f"Запрос от пользователя {user_id}")
-        await message.answer("Привет! Я бот короче...")
+        await message.answer("Привет! Я бот...")
 
 # Статистика по мастерам одного ТО за месяц. !!! Внимание, это не аналог отчета за неделю.
 @dp.message(Command("month", "месяц"))
@@ -161,7 +148,6 @@ async def echo_mess(message: types.Message):
             try:
                 report = ReportParser(message, t_o, date_now_full, date_month_year)
                 await report.process_report()
-
             except IndexError:
                 logger.info("Тут видимо сообщение не относящееся к отчету.")
 
@@ -237,7 +223,6 @@ async def main():
     # Запускаем поллинг
     logger.info("Бот запущен")
     await dp.start_polling(bot)
-
 
 
 if __name__ == "__main__":

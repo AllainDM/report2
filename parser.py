@@ -14,13 +14,6 @@ import config
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
-
-logging.debug("Это отладочное сообщение")
-logging.info("Это информационное сообщение")
-logging.warning("Это предупреждение")
-logging.error("Это ошибка")
-logging.critical("Это критическая ошибка")
-
 logger = logging.getLogger(__name__)
 
 
@@ -44,9 +37,7 @@ data_users = {
 }
 
 session_users = requests.Session()
-
 req = session_users.get(url_login_get)
-
 csrf = None
 
 def get_token():
@@ -63,8 +54,6 @@ def get_token():
                     csrf = script_lst[num+1]
     logger.info(f"csrf {csrf}")
 
-
-
 def create_users_sessions():
     global csrf
     while True:
@@ -79,7 +68,6 @@ def create_users_sessions():
             # TODO функция отправки тут отсутствует
             # send_telegram("Ошибка создания сессии UserSide, повтор запроса через 5 минут")
             # time.sleep(300)
-
 
 response_users = create_users_sessions()
 

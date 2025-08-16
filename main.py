@@ -1,5 +1,6 @@
 
 import os
+import shutil
 import asyncio
 import logging
 from datetime import datetime, timedelta
@@ -79,6 +80,30 @@ async def month_stats(message: types.Message):
             month = await get_month_dates()  # Список всех дат в месяце
             statistic = OneMasterStatistic(message=message, one_master=one_master, month=month)
             await statistic.process_report()
+
+# Удаление папки
+@dp.message(Command("del"))
+async def echo_mess(message: types.Message):
+    # Узнаем ид пользователя.
+    user_id = message.from_user.id
+    # Получим ТО по группе или по пользователю
+    t_o = await get_to(message)
+    if t_o and user_id in config.USERS:  # Доступно только "админам"
+        command = message.text.split(maxsplit=1)
+        command = command[1]
+        if len(command) == 18:
+            await message.answer(f"Хотим удалить папку /{t_o}/{command}")
+            try:
+                shutil.rmtree(f"files/{t_o}/{command}")
+                logger.info(f"/{t_o}/{command} удален")
+                await message.answer(f"Папка /{t_o}/{command} удалена")
+            except OSError as error:
+                logger.info("Возникла ошибка1.")
+                await message.answer(f"Папка /{t_o}/{command} не найдена!!!")
+        else:
+            await message.answer(f"Дата не указана или указана не верно")
+    # else:
+    #     await message.answer("Неа")
 
 # Основной обработчик сообщений. Отправка и запросы отчетов.
 @dp.message()

@@ -66,7 +66,7 @@ class ReportParser:
         try:
             await self._parse_message()     # Обработка сообщения, разделение по ":"
             await self._validate_date()     # Проверка наличия даты перед фамилией
-            # Вызов из функции обработки даты
+            # !!! Вызов из функции обработки даты
             # await self._validate_master()   # Если не указана фамилия, обрабатывать дальше нет смысла
             await self._parse_report()      # Сбор количества выполненных заявок
             await self._validate_error()    # Обработка ошибок, отсутствия необходимых пунктов
@@ -110,7 +110,7 @@ class ReportParser:
             # В случае успеха всех проверок(!) смотрим кто прислал отчет, с датой разрешено только админам
             user_id = self.message.from_user.id
             if user_id not in config.USERS:
-                raise ValidationError("Отправка отчета с датой смертным запрещена, отчет не сохранен.")
+                raise ValidationError('Отправка отчета с датой смертным запрещена. Отчёт не сохранён.')
 
             new_main_list = self.main_txt[0].split()
             print(f"new_main_list[1] {new_main_list[1]}")
@@ -126,13 +126,16 @@ class ReportParser:
         txt_soname_pre = new_main_txt.replace("\n", " ")
         # txt_soname_pre = self.main_txt[0].replace("\n", " ")
         txt_soname = txt_soname_pre.split(" ")
-        if txt_soname[0][0:2].lower() != 'ет':
-            if txt_soname[0][0:2].lower() == "то":
-                raise ValidationError("Необходимо указать фамилию мастера, отчет не сохранен.")
-            else:
-                self.master = txt_soname[0].title()
+        # if txt_soname[0][0:2].lower() != 'ет':
+        #     if txt_soname[0][0:2].lower() == "то":
+        if txt_soname[0][0:2].lower() == 'ет' or txt_soname[0][0:2].lower() == "то":
+            raise ValidationError('Необходимо указать фамилию мастера. Отчёт не сохранён.')
+        elif txt_soname[0].lower() == "фамилия":
+            raise ValidationError('Необходимо указать фамилию мастера, а не просто написать "фамилия". Отчёт не сохранён.')
+        else:
+            self.master = txt_soname[0].title()
         if self.master == "не указан" or self.master == "":
-            raise ValidationError("Необходимо указать фамилию мастера, отчет не сохранен.")
+            raise ValidationError('Необходимо указать фамилию мастера. Отчёт не сохранён.')
 
 
     # Обработка отчета для получения количества выполненных заявок

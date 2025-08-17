@@ -215,6 +215,13 @@ async def echo_mess(message: types.Message):
             try:
                 report = ReportParser(message, t_o, date_now_full, date_month_year)
                 await report.process_report()
+                # Выведем имена мастеров для сверки.
+                list_masters = SearchReportsInFolder(message=message, t_o=t_o)
+                await list_masters.process_report()
+                rep_masters = "Отчеты в папке: \n"
+                for master in list_masters.list_masters:
+                    rep_masters += f'{master} \n'
+                await message.answer(rep_masters)
             except IndexError:
                 logger.info("Тут видимо сообщение не относящееся к отчету.")
 

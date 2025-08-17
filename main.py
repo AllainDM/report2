@@ -115,16 +115,16 @@ async def del_file(message: types.Message):
     t_o = await get_to(message)
     if t_o and user_id in config.USERS:  # Доступно только "админам"
         list_masters = SearchReportsInFolder(message=message, t_o=t_o)
+        await list_masters.process_report()
+        print(f"list_masters.list_masters {list_masters.list_masters}")
         if len(list_masters.list_masters) > 0:
-            print(list_masters.list_masters)
-            await message.answer("Файлы найдены, но хер тебе")
-
+            # Дата для определения папок
             date_now = datetime.now()
             date_ago = date_now - timedelta(hours=15)  # - hours здесь мы выставляем минус 15 часов
             logger.info(f"Текущая дата: {date_now}")
             month_year = date_ago.strftime("%m.%Y")
             full_date = date_ago.strftime("%d.%m.%Y")
-
+            # Фамилия мастера из аргумента
             command = message.text.split(maxsplit=1)
             master = command[1]
 
@@ -134,7 +134,10 @@ async def del_file(message: types.Message):
                 await message.answer(f"Файл /{t_o}/{month_year}/{full_date}/{master} удален")
             except OSError as error:
                 await message.answer(f"Файл /{t_o}/{month_year}/{full_date}/{master} не найден!!!")
-            # Выведем имена мастеров для сверки
+            # Выведем имена мастеров для сверки.
+            # Обновим список файлов в папке.
+            list_masters = SearchReportsInFolder(message=message, t_o=t_o)
+            await list_masters.process_report()
             rep_masters = "Отчеты в папке: \n"
             for master in list_masters.list_masters:
                 rep_masters += f'{master} \n'

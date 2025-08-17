@@ -659,6 +659,7 @@ class SearchReportsInFolder:
     async def _search_files(self):
         if os.path.exists(f"files/{self.t_o}/{self.date_month_year}/{self.full_date}"):
             self.files = os.listdir(f"files/{self.t_o}/{self.date_month_year}/{self.full_date}")
+            print(f"self.files {self.files}")
 
     # Сбор фамилий мастеров по названиям файлов
     async def _get_masters(self):

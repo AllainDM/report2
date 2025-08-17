@@ -632,3 +632,37 @@ class OneMasterStatistic:
                   )
         await self.message.answer(answer)
 
+# Поиск отчетов в папке. Для вывода в тг, для сверки, после добавления или удаления отчетов.
+class SearchReportsInFolder:
+    def __init__(self, message, t_o):
+        self.message = message      # Сообщение из ТГ
+        self.t_o = t_o              # Территориальное подразделение
+        self.one_master = ""    # Фамилия мастера(название файла)
+        self.num_reports = 0    # Количество отчетов в папке
+        self.list_masters = []   # Список фамилий мастеров чей отчет есть в папке
+
+    # Запуск всех методов для обработки
+    async def process_report(self):
+        await self._calc_date()             # Получение даты
+        await self._search_files()          # Поиск файлов в папке
+        await self._get_masters()           # Сбор фамилий мастеров по названиям файлов
+
+    # Получение даты для определения папки
+    async def _calc_date(self):
+        date_now = datetime.now()
+        date_ago = date_now - timedelta(hours=15)  # - hours здесь мы выставляем минус 15 часов
+        logger.info(f"Текущая дата: {date_now}")
+        self.date_month_year = date_ago.strftime("%m.%Y")
+        self.full_date = date_ago.strftime("%d.%m.%Y")
+
+    # Поиск всех файлов в папке
+    async def _search_files(self):
+        if os.path.exists(f"files/{self.t_o}/{self.date_month_year}/{self.full_date}"):
+            self.files = os.listdir(f"files/{self.t_o}/{self.date_month_year}/{self.full_date}")
+
+    # Сбор фамилий мастеров по названиям файлов
+    async def _get_masters(self):
+        for file in self.files:
+            if file[-4:] == "json":
+                self.list_masters.append(file[:-5])
+                self.num_reports += 1

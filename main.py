@@ -18,6 +18,7 @@ from report_handler import ReportWeek
 from report_handler import ReportParser
 from report_handler import MastersStatistic
 from report_handler import OneMasterStatistic
+from report_handler import SearchReportsInFolder
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -81,9 +82,9 @@ async def month_stats(message: types.Message):
             statistic = OneMasterStatistic(message=message, one_master=one_master, month=month)
             await statistic.process_report()
 
-# Удаление папки
+# Удаление папки с отчетами за день
 @dp.message(Command("del"))
-async def echo_mess(message: types.Message):
+async def del_folder(message: types.Message):
     # Узнаем ид пользователя.
     user_id = message.from_user.id
     # Получим ТО по группе или по пользователю
@@ -104,6 +105,44 @@ async def echo_mess(message: types.Message):
             await message.answer(f"Дата не указана или указана не верно")
     # else:
     #     await message.answer("Неа")
+
+# Удаление одного файла, отчета мастера
+@dp.message(Command("del_file"))
+async def del_file(message: types.Message):
+    # Получим ид пользователя и сравним со списком разрешенных в файле конфига
+    user_id = message.from_user.id
+    # Получим ТО по группе или по пользователю
+    t_o = await get_to(message)
+    if t_o and user_id in config.USERS:  # Доступно только "админам"
+        list_masters = SearchReportsInFolder(message=message, t_o=t_o)
+        if len(list_masters.list_masters) > 0:
+            print(list_masters.list_masters)
+            await message.answer("Файлы найдены, но хер тебе")
+
+            date_now = datetime.now()
+            date_ago = date_now - timedelta(hours=15)  # - hours здесь мы выставляем минус 15 часов
+            logger.info(f"Текущая дата: {date_now}")
+            month_year = date_ago.strftime("%m.%Y")
+            full_date = date_ago.strftime("%d.%m.%Y")
+
+            command = message.text.split(maxsplit=1)
+            master = command[1]
+
+            await message.answer(f"Хотим удалить файл /{t_o}/{month_year}/{full_date}/{master}")
+            try:
+                os.remove(f"files/{t_o}/{month_year}/{full_date}/{master}.json")
+                await message.answer(f"Файл /{t_o}/{month_year}/{full_date}/{master} удален")
+            except OSError as error:
+                await message.answer(f"Файл /{t_o}/{month_year}/{full_date}/{master} не найден!!!")
+            # Выведем имена мастеров для сверки
+            rep_masters = "Отчеты в папке: \n"
+            for master in list_masters.list_masters:
+                rep_masters += f'{master} \n'
+            await message.answer(rep_masters)
+        else:
+            await message.answer(f"Файл не указан или указан не верно")
+    else:
+        await message.answer("Неа")
 
 # Основной обработчик сообщений. Отправка и запросы отчетов.
 @dp.message()

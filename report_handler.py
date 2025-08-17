@@ -269,9 +269,8 @@ class ReportParser:
             msg_err_txt = f""
             for e in msg_err:
                 msg_err_txt += e
-            await self.message.reply(f"Внимание, возможна ошибка с отчетом мастера "
+            raise ValidationError(f"Внимание, возможна ошибка с отчетом мастера "
                                      f"{self.master}: {msg_err_txt} Отчет не сохранен.")
-            return
 
     # Составление списка номеров сервисов
     async def _collect_repair_numbers(self):

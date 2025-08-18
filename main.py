@@ -224,6 +224,10 @@ async def echo_mess(message: types.Message):
                 await message.answer(rep_masters)
             except IndexError:
                 logger.info("Тут видимо сообщение не относящееся к отчету.")
+    else:
+        user_id = message.from_user.id
+        group_id = message.chat.id
+        await message.answer(f"ТО не определено. \nuser_id: {user_id} \ngroup_id: {group_id}")
 
 # Составление списка дат для недельного отчета
 async def get_last_full_week():

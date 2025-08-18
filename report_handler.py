@@ -365,6 +365,7 @@ class ReportCalc:
     async def process_report(self):
         await self._read_jsons()            # Чтение файлов json в папке
         await self._send_answer_to_chat()   # Отправка ответа со списком мастеров в чат
+        await self._send_calc_report_to_chat()   # Отправка общего количество выполненных заявок в чат
         await self._save_report_json()      # Сохраним в json общее количество выполненных задач и все их номера
         await self._parser_address()        # Получим адреса и типы всех задач
         await self._save_report_exel()      # Сохраним результат парсера в ексель
@@ -389,12 +390,23 @@ class ReportCalc:
                     self.num_rep += 1  # Добавим счетчик количества посчитанных
                     self.list_masters.append(data["master"])  # Добавим фамилию мастера
 
-    # Отправим обработанный отчет текстов в чат
+    # Отправим список полученных отчетов в чат
     async def _send_answer_to_chat(self):
         # Выведем имена мастеров для сверки
         answer = "Получены отчеты: \n"
         for master in self.list_masters:
             answer += f'{master} \n'
+        await self.message.answer(answer)
+
+    # Отправим общее количество выполненных заявок в чат
+    async def _send_calc_report_to_chat(self):
+        answer = (f"{self.t_o} {self.report_folder} \n\n"
+                  f"Интернет {self.to_save["et_int"]}"
+                  f"({self.to_save["et_int_pri"]}), "
+                  f"ТВ {self.to_save["et_tv"]}({self.to_save["et_tv_pri"]}), "
+                  f"домофон {self.to_save["et_dom"]}({self.to_save["et_dom_pri"]}), "
+                  f"сервис {self.to_save["et_serv"]}, "
+                  f"сервис ТВ {self.to_save["et_serv_tv"]}")
         await self.message.answer(answer)
 
     # Сохранение отчета в json

@@ -558,20 +558,47 @@ class MastersStatistic:
                     self.masters[master]["all_tasks"] += data["et_int"] + data["et_tv"] + data["et_dom"] + data["et_serv"] + data["et_serv_tv"]
                     self.masters[master]["days"] += 1
 
+    # # Отправка ответа в тг
+    # async def _send_answer_to_chat(self):
+    #     for master in sorted_list:
+    #         answer = (f"{master} \n\n"
+    #                   # f"Выполнено: \n"
+    #                   f"Интернет {self.masters[master]["et_int"]} "
+    #                   f"({self.masters[master]["et_int_pri"]}), \n"
+    #                   f"ТВ {self.masters[master]["et_tv"]}({self.masters[master]["et_tv_pri"]}), \n"
+    #                   f"Домофон {self.masters[master]["et_dom"]}({self.masters[master]["et_dom_pri"]}), \n"
+    #                   f"Сервис {self.masters[master]["et_serv"]}, \n"
+    #                   f"Сервис ТВ {self.masters[master]["et_serv_tv"]} \n\n"
+    #                   f"Всего выполнено: {self.masters[master]["all_tasks"]} \n"
+    #                   f"Отработано смен: {self.masters[master]["days"]} \n"
+    #                   f"Среднее за смену: {round(self.masters[master]["all_tasks"]/self.masters[master]["days"], 1)} \n"
+    #                   )
+    #
+    #         await self.message.answer(answer)
+
     # Отправка ответа в тг
     async def _send_answer_to_chat(self):
-        for master in self.masters:
-            answer = (f"{master} \n\n"
+        sorted_list = sorted(
+            [
+                (name, data)
+                for name, data in self.masters.items()
+                if data["all_tasks"] > 5
+            ],
+            key=lambda item: item[1]["all_tasks"],
+            reverse=True,
+        )
+        for master_name, master_data in sorted_list:
+            answer = (f"{master_name} \n\n"
                       # f"Выполнено: \n"
-                      f"Интернет {self.masters[master]["et_int"]} "
-                      f"({self.masters[master]["et_int_pri"]}), \n"
-                      f"ТВ {self.masters[master]["et_tv"]}({self.masters[master]["et_tv_pri"]}), \n"
-                      f"Домофон {self.masters[master]["et_dom"]}({self.masters[master]["et_dom_pri"]}), \n"
-                      f"Сервис {self.masters[master]["et_serv"]}, \n"
-                      f"Сервис ТВ {self.masters[master]["et_serv_tv"]} \n\n"
-                      f"Всего выполнено: {self.masters[master]["all_tasks"]} \n"
-                      f"Отработано смен: {self.masters[master]["days"]} \n"
-                      f"Среднее за смену: {round(self.masters[master]["all_tasks"]/self.masters[master]["days"], 1)} \n"
+                      f"Интернет {master_data["et_int"]} "
+                      f"({master_data["et_int_pri"]}), \n"
+                      f"ТВ {master_data["et_tv"]}({master_data["et_tv_pri"]}), \n"
+                      f"Домофон {master_data["et_dom"]}({master_data["et_dom_pri"]}), \n"
+                      f"Сервис {master_data["et_serv"]}, \n"
+                      f"Сервис ТВ {master_data["et_serv_tv"]} \n\n"
+                      f"Всего выполнено: {master_data["all_tasks"]} \n"
+                      f"Отработано смен: {master_data["days"]} \n"
+                      f"Среднее за смену: {round(master_data["all_tasks"]/master_data["days"], 1)} \n"
                       )
 
             await self.message.answer(answer)

@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from aiogram.types import FSInputFile
 
+import crud
 import parser
 import config
 import to_exel
@@ -409,7 +410,11 @@ class ReportCalc:
                   f"сервис ТВ {self.to_save["et_serv_tv"]}")
         await self.message.answer(answer)
 
-    # Сохранение отчета в json
+    # Сохранение дневного отчета то в БД
+    async def _save_report_to_bd(self):
+        ...
+
+    # Сохранение дневного отчета то в json
     async def _save_report_json(self):
         # Сохраним в json файл итоговый результат
         with open(f'files/{self.t_o}/{self.date_month_year}/{self.report_folder}.json', 'w') as outfile:

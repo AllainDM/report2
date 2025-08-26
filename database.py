@@ -32,6 +32,7 @@ def updates_tables():
                    "et_int_pri integer, "
                    "et_tv integer, "
                    "et_tv_pri integer, "
+                   "et_dom integer, "
                    "et_dom_pri integer, "
                    "et_serv integer, "
                    "et_serv_tv integer, "

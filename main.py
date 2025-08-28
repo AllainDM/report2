@@ -220,6 +220,7 @@ async def echo_mess(message: types.Message):
                 await list_masters.process_report()
                 rep_masters = "Отчеты в папке: \n"
                 for master in list_masters.list_masters:
+                    master = master.replace('р', 'л')
                     rep_masters += f'{master} \n'
                 await message.answer(rep_masters)
             except IndexError:

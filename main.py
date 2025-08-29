@@ -12,6 +12,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 from aiogram.enums import ParseMode
 
+import crud
 import config
 from report_handler import ReportCalc
 from report_handler import ReportWeek

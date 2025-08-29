@@ -73,6 +73,7 @@ class ReportParser:
             await self._validate_error()    # Обработка ошибок, отсутствия необходимых пунктов
             await self._collect_repair_numbers()        # Составление списка номеров сервисов
             await self._save_report_json()
+            await self._save_report_db()
             await self._send_parsed_report_to_chat()    # Отправим обработанный отчет текстов в чат
         except ValueError as e:
             await self.message.reply(str(e))
@@ -137,7 +138,6 @@ class ReportParser:
             self.master = txt_soname[0].title()
         if self.master == "не указан" or self.master == "":
             raise ValidationError('Необходимо указать фамилию мастера. Отчёт не сохранён.')
-
 
     # Обработка отчета для получения количества выполненных заявок
     async def _parse_report(self):
@@ -325,6 +325,20 @@ class ReportParser:
         }
         with open(f'files/{self.t_o}/{self.month_year}/{self.date_now_full}/{self.master}.json', 'w') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
+
+    # Сохранение отчета в json
+    async def _save_report_db(self):
+        report = {
+            "et_int": self.et_int,
+            "et_int_pri": self.et_int_pri,
+            "et_tv": self.et_tv,
+            "et_tv_pri": self.et_tv_pri,
+            "et_dom": self.et_dom,
+            "et_dom_pri": self.et_dom_pri,
+            "et_serv": self.et_serv,
+            "et_serv_tv": self.et_serv_tv,
+        }
+        crud.add_day_report(t_o=self.t_o, report=report, data_month=self.month_year, date_full=self.date_now_full)
 
     # Отправим обработанный отчет текстов в чат
     async def _send_parsed_report_to_chat(self):

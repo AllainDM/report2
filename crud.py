@@ -57,8 +57,6 @@ def add_master_day_report(master: str, t_o: str, report: dict, data_month: str, 
         connection.close()
 
 
-
-
 def add_full_day_report(t_o: str, report: dict, data_month: str, date_full: str):
     connection = get_sqlite_session()
     if connection is None:
@@ -104,7 +102,7 @@ def add_full_day_report(t_o: str, report: dict, data_month: str, date_full: str)
         cur.close()
         connection.close()
 
-
+# Проверка все ли ТО сделали дневной отчет.
 def check_all_full_day_report(date_full: str):
     connection = get_sqlite_session()
     if connection is None:
@@ -115,16 +113,50 @@ def check_all_full_day_report(date_full: str):
     try:
         # Считаем количество записей на эту дату
         cur.execute("SELECT COUNT(*) FROM full_day WHERE date_full = ?", (date_full,))
-
         result = cur.fetchone()
 
         # Если есть ровно 4 записи, иначе False
         if result is not None and result[0] == 4:
             print("Есть 4 записи ТО")
-
+        else:
+            print("Еще не все сделали дневной отчет.")
+        return result is not None and result[0] == 4
 
     except Exception as ex:
         logging.debug("Ошибка при проверке количества записей", ex)
+        return False
+
+    finally:
+        cur.close()
+        connection.close()
+
+def get_average_day_statistic_for_all_to(date_full: str):
+    connection = get_sqlite_session()
+    if connection is None:
+        logging.debug("Ошибка: не удалось подключиться к базе данных.")
+        return False
+
+    cur = connection.cursor()
+    try:
+
+        cur.execute("""
+            SELECT
+                t_o,
+                COUNT(master) AS master_count,
+                SUM(et_int + et_tv + et_dom + et_serv + et_serv_tv) AS total_requests,
+                AVG(et_int + et_tv + et_dom + et_serv + et_serv_tv) AS average_requests_per_master
+            FROM
+                master_day
+            WHERE
+                date_full = ?
+            GROUP BY
+                t_o;
+        """, (date_full,))
+        results = cur.fetchall()
+        return results
+
+    except Exception as ex:
+        logging.debug("Ошибка при средней дневной статистики", ex)
         return False
 
     finally:

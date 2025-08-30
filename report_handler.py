@@ -358,7 +358,7 @@ class ReportCalc:
         self.t_o = t_o                      # Территориальное отделение
         self.files = files                  # Список с файлами в папке с отчетами за день
         self.date_month_year = date_month_year  # Имя папки(месяц/год) с отчетами за месяц
-        self.report_folder = report_folder      # Имя папки(день/месяц/год) с отчетами за день
+        self.date_full = report_folder      # Имя папки(день/месяц/год) с отчетами за день
 
         self.num_rep = 0        # Количество отчетов для сверки.
         self.list_masters = []  # Список мастеров в отчете, для сверки.
@@ -378,22 +378,26 @@ class ReportCalc:
 
     # Запуск всех методов для обработки обсчета ответов
     async def process_report(self):
+        # Основной сбор данных и базовая отчётность
         await self._read_jsons()            # Чтение файлов json в папке
         await self._send_answer_to_chat()   # Отправка ответа со списком мастеров в чат
         await self._send_calc_report_to_chat()   # Отправка общего количество выполненных заявок в чат
         await self._save_report_json()      # Сохраним в json общее количество выполненных задач и все их номера
         await self._save_report_db()        # Сохраним в db счетчик задач, номера сервисов не сохраняем
+        # Дополнительная обработка заявок
         await self._parser_address()        # Получим адреса и типы всех задач
         await self._save_report_exel()      # Сохраним результат парсера в ексель
         await self._send_exel_to_chat()     # Отправим ексель файл в чат тг
-        # Посчитаем среднюю статистику по мастерам во всех ТО
-
+        # Аналитика
+        if await self._check_day_report_all_to():  # Проверка все ли ТО сделали дневной отчет
+            stat = await self._average_day_statistics()     # Подсчет средней статистики
+            await self._send_average_day_statistic_to_chat(stat)  # Отправка статистики по чатам
 
     # Чтение файлов с отчетами за день. Извлечение количества выполненных заявок и списка номеров заданий.
     async def _read_jsons(self):
         for file in self.files:
             if file[-4:] == "json":
-                with open(f'files/{self.t_o}/{self.date_month_year}/{self.report_folder}/{file}', 'r', encoding='utf-8') as outfile:
+                with open(f'files/{self.t_o}/{self.date_month_year}/{self.date_full}/{file}', 'r', encoding='utf-8') as outfile:
                     data = json.loads(outfile.read())
                     self.to_save["et_int"] += data["et_int"]
                     self.to_save["et_int_pri"] += data["et_int_pri"]
@@ -418,7 +422,7 @@ class ReportCalc:
 
     # Отправим общее количество выполненных заявок в чат
     async def _send_calc_report_to_chat(self):
-        answer = (f"{self.t_o} {self.report_folder} \n\n"
+        answer = (f"{self.t_o} {self.date_full} \n\n"
                   f"Интернет {self.to_save["et_int"]}"
                   f"({self.to_save["et_int_pri"]}), "
                   f"ТВ {self.to_save["et_tv"]}({self.to_save["et_tv_pri"]}), "
@@ -430,12 +434,12 @@ class ReportCalc:
     # Сохранение дневного отчета то в БД
     async def _save_report_db(self):
         crud.add_full_day_report(t_o=self.t_o, report=self.to_save, data_month=self.date_month_year,
-                                   date_full=self.report_folder)
+                                   date_full=self.date_full)
 
     # Сохранение дневного отчета то в json
     async def _save_report_json(self):
         # Сохраним в json файл итоговый результат
-        with open(f'files/{self.t_o}/{self.date_month_year}/{self.report_folder}.json', 'w') as outfile:
+        with open(f'files/{self.t_o}/{self.date_month_year}/{self.date_full}.json', 'w') as outfile:
             json.dump(self.to_save, outfile, sort_keys=False, ensure_ascii=False, indent=4, separators=(',', ': '))
 
     # Получение адресов по списку номеров заданий
@@ -447,15 +451,42 @@ class ReportCalc:
     async def _save_report_exel(self):
         # Сохраним ексель файл с номерами ремонтов
         await to_exel.save_to_exel(list_to_exel=self.parser_answer, t_o=self.t_o,
-                                   full_date=self.report_folder, date_month_year=self.date_month_year)
+                                   full_date=self.date_full, date_month_year=self.date_month_year)
 
     # Отправка exel файла в чат
     async def _send_exel_to_chat(self):
-        file = FSInputFile(f"files/{self.t_o}/{self.date_month_year}/{self.report_folder}.xls",
-                           filename=f"{self.report_folder}.xls")
+        file = FSInputFile(f"files/{self.t_o}/{self.date_month_year}/{self.date_full}.xls",
+                           filename=f"{self.date_full}.xls")
         await self.message.answer_document(file)
 
-    #
+    # Проверка все ли ТО сделали дневной отчет.
+    # Для дальнейшего вычисления средней статистики по всем ТО.
+    async def _check_day_report_all_to(self):
+        return crud.check_all_full_day_report(date_full=self.date_full)
+
+    # Подсчет средней дневной статистики по всем ТО.
+    async def _average_day_statistics(self):
+        stats = crud.get_average_day_statistic_for_all_to(date_full=self.date_full)
+        return stats
+
+    # Отправим среднюю статистику выполненных заявок в чат
+    async def _send_average_day_statistic_to_chat(self, stats):
+        if not stats:
+            answer = "Не удалось получить дневную статистику по подразделениям. 😔"
+            await self.message.answer(answer)
+            return
+
+        # Формируем сообщение для бота
+        lines = ["**📊 Дневная статистика по подразделениям:**\n"]
+        for t_o, master_count, total_requests, average_requests in stats:
+            line = (f"**Подразделение:** {t_o}\n"
+                    f"**Количество мастеров:** {master_count}\n"
+                    f"**Всего заявок:** {total_requests}\n"
+                    f"**В среднем на мастера:** {average_requests:.2f}\n")
+            lines.append(line)
+
+        answer = "\n---\n".join(lines)
+        await self.message.answer(answer, parse_mode="Markdown")
 
 # Сбор недельной статистики
 class ReportWeek:

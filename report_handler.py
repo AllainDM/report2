@@ -386,6 +386,8 @@ class ReportCalc:
         await self._parser_address()        # Получим адреса и типы всех задач
         await self._save_report_exel()      # Сохраним результат парсера в ексель
         await self._send_exel_to_chat()     # Отправим ексель файл в чат тг
+        # Посчитаем среднюю статистику по мастерам во всех ТО
+
 
     # Чтение файлов с отчетами за день. Извлечение количества выполненных заявок и списка номеров заданий.
     async def _read_jsons(self):
@@ -452,6 +454,8 @@ class ReportCalc:
         file = FSInputFile(f"files/{self.t_o}/{self.date_month_year}/{self.report_folder}.xls",
                            filename=f"{self.report_folder}.xls")
         await self.message.answer_document(file)
+
+    #
 
 # Сбор недельной статистики
 class ReportWeek:

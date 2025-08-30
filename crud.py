@@ -103,3 +103,30 @@ def add_full_day_report(t_o: str, report: dict, data_month: str, date_full: str)
     finally:
         cur.close()
         connection.close()
+
+
+def check_all_full_day_report(date_full: str):
+    connection = get_sqlite_session()
+    if connection is None:
+        logging.debug("Ошибка: не удалось подключиться к базе данных.")
+        return False
+
+    cur = connection.cursor()
+    try:
+        # Считаем количество записей на эту дату
+        cur.execute("SELECT COUNT(*) FROM full_day WHERE date_full = ?", (date_full,))
+
+        result = cur.fetchone()
+
+        # Если есть ровно 4 записи, иначе False
+        if result is not None and result[0] == 4:
+            print("Есть 4 записи ТО")
+
+
+    except Exception as ex:
+        logging.debug("Ошибка при проверке количества записей", ex)
+        return False
+
+    finally:
+        cur.close()
+        connection.close()

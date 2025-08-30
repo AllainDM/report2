@@ -204,6 +204,7 @@ async def echo_mess(message: types.Message):
                         await message.answer(f"Найдено {len(files)} файл(ов).")
                         reports = ReportCalc(message=message, t_o=t_o, files=files,
                                              date_month_year=date_month_year, report_folder=report_folder)
+                        print(message.chat.id)
                         await reports.process_report()
                     else:
                         await message.answer(f"Папка {report_folder} не найдена.")

@@ -3,6 +3,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 
+from aiogram import Bot
 from aiogram.types import FSInputFile
 
 import crud
@@ -354,6 +355,7 @@ class ReportParser:
 # Вывод отчета за день
 class ReportCalc:
     def __init__(self, message, t_o, files, date_month_year, report_folder):
+        self.bot = message.bot
         self.message = message              # Сообщение из ТГ
         self.t_o = t_o                      # Территориальное отделение
         self.files = files                  # Список с файлами в папке с отчетами за день
@@ -486,7 +488,13 @@ class ReportCalc:
             lines.append(line)
 
         answer = "\n---\n".join(lines)
-        await self.message.answer(answer, parse_mode="Markdown")
+        # await self.message.answer(answer, parse_mode="Markdown")
+        for group_id in config.GROUPS:
+            try:
+                await self.bot.send_message(chat_id=group_id, text=answer, parse_mode="Markdown")
+                logger.info(f"Сообщение успешно отправлено в чат {group_id}")
+            except Exception as e:
+                logger.info(f"Не удалось отправить сообщение в чат {group_id}: {e}")
 
 # Сбор недельной статистики
 class ReportWeek:

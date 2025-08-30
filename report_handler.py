@@ -326,7 +326,7 @@ class ReportParser:
         with open(f'files/{self.t_o}/{self.month_year}/{self.date_now_full}/{self.master}.json', 'w') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
 
-    # Сохранение отчета в json
+    # Сохранение отчета в бд
     async def _save_report_db(self):
         report = {
             "et_int": self.et_int,
@@ -338,7 +338,7 @@ class ReportParser:
             "et_serv": self.et_serv,
             "et_serv_tv": self.et_serv_tv,
         }
-        crud.add_day_report(t_o=self.t_o, report=report, data_month=self.month_year, date_full=self.date_now_full)
+        crud.add_master_day_report(master=self.master, t_o=self.t_o, report=report, data_month=self.month_year, date_full=self.date_now_full)
 
     # Отправим обработанный отчет текстов в чат
     async def _send_parsed_report_to_chat(self):
@@ -382,6 +382,7 @@ class ReportCalc:
         await self._send_answer_to_chat()   # Отправка ответа со списком мастеров в чат
         await self._send_calc_report_to_chat()   # Отправка общего количество выполненных заявок в чат
         await self._save_report_json()      # Сохраним в json общее количество выполненных задач и все их номера
+        await self._save_report_db()        # Сохраним в db счетчик задач, номера сервисов не сохраняем
         await self._parser_address()        # Получим адреса и типы всех задач
         await self._save_report_exel()      # Сохраним результат парсера в ексель
         await self._send_exel_to_chat()     # Отправим ексель файл в чат тг
@@ -425,8 +426,9 @@ class ReportCalc:
         await self.message.answer(answer)
 
     # Сохранение дневного отчета то в БД
-    async def _save_report_to_bd(self):
-        ...
+    async def _save_report_db(self):
+        crud.add_full_day_report(t_o=self.t_o, report=self.to_save, data_month=self.date_month_year,
+                                   date_full=self.report_folder)
 
     # Сохранение дневного отчета то в json
     async def _save_report_json(self):

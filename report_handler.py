@@ -339,7 +339,9 @@ class ReportParser:
             "et_serv": self.et_serv,
             "et_serv_tv": self.et_serv_tv,
         }
-        crud.add_master_day_report(master=self.master, t_o=self.t_o, report=report, data_month=self.month_year, date_full=self.date_now_full)
+        crud.add_master_day_report(master=self.master, t_o=self.t_o, report=report,
+                                   data_month=self.month_year, date_full=self.date_now_full,
+                                   task_list=self.list_repairs)
 
     # Отправим обработанный отчет текстов в чат
     async def _send_parsed_report_to_chat(self):

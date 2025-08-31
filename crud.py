@@ -1,4 +1,4 @@
-
+import json
 import logging
 from csv import excel
 
@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def add_master_day_report(master: str, t_o: str, report: dict, data_month: str, date_full: str):
+def add_master_day_report(master: str, t_o: str, report: dict, data_month: str, date_full: str, task_list: list):
     connection = get_sqlite_session()
     if connection is None:
         logging.debug("Ошибка: не удалось подключиться к базе данных.")
@@ -19,6 +19,10 @@ def add_master_day_report(master: str, t_o: str, report: dict, data_month: str, 
     cur = connection.cursor()
     try:
         record_time = datetime.strftime(datetime.now(), "%d.%m.%Y %H:%M")
+
+        # Преобразуем список в строку JSON
+        task_list_json = json.dumps(task_list)
+
         # Сначала проверяем, есть ли такая запись
         cur.execute("SELECT rowid FROM master_day WHERE t_o = ? AND date_full = ? AND master = ?", (t_o, date_full, master))
         existing_record = cur.fetchone()
@@ -31,8 +35,9 @@ def add_master_day_report(master: str, t_o: str, report: dict, data_month: str, 
         # Вставляем новую запись
         cur.execute("""
             INSERT INTO master_day 
-            (t_o, master, et_int, et_int_pri, et_tv, et_tv_pri, et_dom, et_dom_pri, et_serv, et_serv_tv, data_month, date_full, record_time) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (t_o, master, et_int, et_int_pri, et_tv, et_tv_pri, et_dom, et_dom_pri, et_serv, et_serv_tv, 
+            data_month, date_full, record_time, task_list) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             t_o,
             master,
@@ -46,13 +51,14 @@ def add_master_day_report(master: str, t_o: str, report: dict, data_month: str, 
             report.get("et_serv_tv", 0),
             data_month,
             date_full,
-            record_time
+            record_time,
+            task_list_json
         ))
         connection.commit()
         return True
 
     except Exception as ex:
-        logging.debug("Ошибка добавления данных в БД add_master_day_report", ex)
+        logging.info("Ошибка добавления данных в БД add_master_day_report", ex)
 
     finally:
         cur.close()
@@ -62,7 +68,7 @@ def add_master_day_report(master: str, t_o: str, report: dict, data_month: str, 
 def add_full_day_report(t_o: str, report: dict, data_month: str, date_full: str):
     connection = get_sqlite_session()
     if connection is None:
-        logging.debug("Ошибка: не удалось подключиться к базе данных.")
+        logging.info("Ошибка: не удалось подключиться к базе данных.")
         return False
 
     cur = connection.cursor()

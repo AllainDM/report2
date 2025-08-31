@@ -28,6 +28,9 @@ def updates_tables():
     cursor.execute("create table if not exists full_day ("
                    "rowid integer primary key autoincrement, "
                    "t_o text not null, "
+                   "data_month text, "
+                   "date_full text, "
+                   "record_time text, "
                    "et_int integer, "
                    "et_int_pri integer, "
                    "et_tv integer, "
@@ -35,10 +38,7 @@ def updates_tables():
                    "et_dom integer, "
                    "et_dom_pri integer, "
                    "et_serv integer, "
-                   "et_serv_tv integer, "
-                   "data_month text, "
-                   "date_full text, "
-                   "record_time text"
+                   "et_serv_tv integer"
                    ");")
 
     logger.debug("Таблица day создана.")
@@ -48,6 +48,9 @@ def updates_tables():
                    "rowid integer primary key autoincrement, "
                    "t_o text not null, "
                    "master text not null, "
+                   "data_month text, "
+                   "date_full text, "
+                   "record_time text, "
                    "et_int integer, "
                    "et_int_pri integer, "
                    "et_tv integer, "
@@ -56,9 +59,7 @@ def updates_tables():
                    "et_dom_pri integer, "
                    "et_serv integer, "
                    "et_serv_tv integer, "
-                   "data_month text, "
-                   "date_full text, "
-                   "record_time text"
+                   "task_list text"
                    ");")
 
     logger.debug("Таблица day создана.")

@@ -491,7 +491,7 @@ class ReportCalc:
 
         answer = "\n---\n".join(lines)
         # await self.message.answer(answer, parse_mode="Markdown")
-        for group_id in config.GROUPS:
+        for group_id in config.CHAT_FOR_DAY_STATISTIC:
             try:
                 await self.bot.send_message(chat_id=group_id, text=answer, parse_mode="Markdown")
                 logger.info(f"Сообщение успешно отправлено в чат {group_id}")

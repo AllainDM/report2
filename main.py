@@ -243,6 +243,7 @@ async def echo_mess(message: types.Message):
                 await message.answer(rep_masters)
             except IndexError:
                 logger.info("Тут видимо сообщение не относящееся к отчету.")
+                logger.info(f"chat.id: {message.chat.id}")
     else:
         user_id = message.from_user.id
         group_id = message.chat.id

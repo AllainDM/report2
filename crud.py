@@ -18,6 +18,7 @@ def add_master_day_report(master: str, t_o: str, report: dict, data_month: str, 
 
     cur = connection.cursor()
     try:
+        record_time = datetime.strftime(datetime.now(), "%d.%m.%Y %H:%M")
         # Сначала проверяем, есть ли такая запись
         cur.execute("SELECT rowid FROM master_day WHERE t_o = ? AND date_full = ? AND master = ?", (t_o, date_full, master))
         existing_record = cur.fetchone()
@@ -30,8 +31,8 @@ def add_master_day_report(master: str, t_o: str, report: dict, data_month: str, 
         # Вставляем новую запись
         cur.execute("""
             INSERT INTO master_day 
-            (t_o, master, et_int, et_int_pri, et_tv, et_tv_pri, et_dom, et_dom_pri, et_serv, et_serv_tv, data_month, date_full) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (t_o, master, et_int, et_int_pri, et_tv, et_tv_pri, et_dom, et_dom_pri, et_serv, et_serv_tv, data_month, date_full, record_time) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             t_o,
             master,
@@ -44,7 +45,8 @@ def add_master_day_report(master: str, t_o: str, report: dict, data_month: str, 
             report.get("et_serv", 0),
             report.get("et_serv_tv", 0),
             data_month,
-            date_full
+            date_full,
+            record_time
         ))
         connection.commit()
         return True
@@ -65,6 +67,7 @@ def add_full_day_report(t_o: str, report: dict, data_month: str, date_full: str)
 
     cur = connection.cursor()
     try:
+        record_time = datetime.strftime(datetime.now(), "%d.%m.%Y %H:%M")
         # Сначала проверяем, есть ли такая запись
         cur.execute("SELECT rowid FROM full_day WHERE t_o = ? AND date_full = ?", (t_o, date_full))
         existing_record = cur.fetchone()
@@ -77,8 +80,8 @@ def add_full_day_report(t_o: str, report: dict, data_month: str, date_full: str)
         # Вставляем новую запись
         cur.execute("""
             INSERT INTO full_day 
-            (t_o, et_int, et_int_pri, et_tv, et_tv_pri, et_dom, et_dom_pri, et_serv, et_serv_tv, data_month, date_full) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (t_o, et_int, et_int_pri, et_tv, et_tv_pri, et_dom, et_dom_pri, et_serv, et_serv_tv, data_month, date_full, record_time) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             t_o,
             report.get("et_int", 0),
@@ -90,7 +93,8 @@ def add_full_day_report(t_o: str, report: dict, data_month: str, date_full: str)
             report.get("et_serv", 0),
             report.get("et_serv_tv", 0),
             data_month,
-            date_full
+            date_full,
+            record_time
         ))
         connection.commit()
         return True

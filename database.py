@@ -37,7 +37,8 @@ def updates_tables():
                    "et_serv integer, "
                    "et_serv_tv integer, "
                    "data_month text, "
-                   "date_full text"
+                   "date_full text, "
+                   "record_time text"
                    ");")
 
     logger.debug("Таблица day создана.")
@@ -56,7 +57,8 @@ def updates_tables():
                    "et_serv integer, "
                    "et_serv_tv integer, "
                    "data_month text, "
-                   "date_full text"
+                   "date_full text, "
+                   "record_time text"
                    ");")
 
     logger.debug("Таблица day создана.")

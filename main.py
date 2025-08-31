@@ -164,6 +164,9 @@ async def echo_mess(message: types.Message):
         date_now_full = date_ago.strftime("%d.%m.%Y")
         date_month_year = date_ago.strftime("%m.%Y")
 
+        # Для более сложных текстовых запросов разделяем сообщение на слова и приводим к нижнему регистру
+        text_parts = message.text.lower().split()
+
         # Обработка текстовых команд.
         # Запрос выписок из отчетов с привлеченными
         if message.text.lower() == "привлеченные":
@@ -186,31 +189,44 @@ async def echo_mess(message: types.Message):
                 await statistic.process_report()
 
         # Запрос отчета, за указанное количество дней назад
-        elif message.text.isdigit() and 1 <= int(message.text) <= config.MAX_REPORT_DAYS_AGO:
-            # Для получения отчета только авторизованный админ
-            if user_id in config.USERS:
-                # Поправим дату под запрос
-                days_to_subtract = int(message.text) - 1
-                date_ago = date_ago - timedelta(days=days_to_subtract)
-                logger.info(f"Новая дата: {date_ago}")
-                date_now_full = date_ago.strftime("%d.%m.%Y")
-                date_month_year = date_ago.strftime("%m.%Y")
-                # Для отчета за день одна папка с текущей датой
-                report_folders = [date_now_full]
-                for report_folder in report_folders:
-                    await message.answer(f"Готовим отчёт за {report_folder}")
-                    if os.path.exists(f"files/{t_o}/{date_month_year}/{report_folder}"):
-                        files = os.listdir(f"files/{t_o}/{date_month_year}/{report_folder}")
-                        await message.answer(f"Найдено {len(files)} файл(ов).")
-                        reports = ReportCalc(message=message, t_o=t_o, files=files,
-                                             date_month_year=date_month_year, report_folder=report_folder)
-                        print(message.chat.id)
-                        await reports.process_report()
-                    else:
-                        await message.answer(f"Папка {report_folder} не найдена.")
-            else:
-                await message.answer("Вы не авторизованны")
-                await message.answer(f"user_id {user_id}")
+        # elif message.text.isdigit() and 1 <= int(message.text) <= config.MAX_REPORT_DAYS_AGO:
+        # Проверяем, что список не пустой и первое слово является числом
+        elif text_parts and text_parts[0].isdigit() and len(text_parts) <= 2:
+            days_str = text_parts[0]
+            if 1 <= int(days_str) <= config.MAX_REPORT_DAYS_AGO:
+                days = int(days_str)
+                # Вторым аргументом может быть ТО
+                if len(text_parts) == 2:
+                    to_from_msg = text_parts[1]
+                    # Если есть совпадение со списком в конфиге возможных ТО
+                    if to_from_msg in config.LIST_T_O_COMMAND:
+                        t_o = config.DICT_T_O[to_from_msg] # Возьмем готовый вариант из конфига.
+                # Продолжаем в любом случае, есть указание ТО или нет
+                # Для получения отчета только авторизованный админ
+                if user_id in config.USERS:
+                    # Поправим дату под запрос
+                    # days_to_subtract = int(message.text) - 1
+                    days_to_subtract = days - 1
+                    date_ago = date_ago - timedelta(days=days_to_subtract)
+                    logger.info(f"Новая дата: {date_ago}")
+                    date_now_full = date_ago.strftime("%d.%m.%Y")
+                    date_month_year = date_ago.strftime("%m.%Y")
+                    # Для отчета за день одна папка с текущей датой
+                    report_folders = [date_now_full]
+                    for report_folder in report_folders:
+                        await message.answer(f"Готовим отчёт за {report_folder}")
+                        if os.path.exists(f"files/{t_o}/{date_month_year}/{report_folder}"):
+                            files = os.listdir(f"files/{t_o}/{date_month_year}/{report_folder}")
+                            await message.answer(f"Найдено {len(files)} файл(ов).")
+                            reports = ReportCalc(message=message, t_o=t_o, files=files,
+                                                 date_month_year=date_month_year, report_folder=report_folder)
+                            print(message.chat.id)
+                            await reports.process_report()
+                        else:
+                            await message.answer(f"Папка {report_folder} не найдена.")
+                else:
+                    await message.answer("Вы не авторизованны")
+                    await message.answer(f"user_id {user_id}")
 
         # Обработка текста, для определения отчета мастеров.
         else:

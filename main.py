@@ -201,7 +201,9 @@ async def echo_mess(message: types.Message):
                     # Если есть совпадение со списком в конфиге возможных ТО
                     if to_from_msg in config.LIST_T_O_COMMAND:
                         t_o = config.DICT_T_O[to_from_msg] # Возьмем готовый вариант из конфига.
-                # Продолжаем в любом случае, есть указание ТО или нет
+                    else:  # Если два слова, но второе не обозначает ТО, то выходим
+                        return
+                # Продолжаем в любом случае, меняли ТО или нет
                 # Для получения отчета только авторизованный админ
                 if user_id in config.USERS:
                     # Поправим дату под запрос
@@ -209,8 +211,8 @@ async def echo_mess(message: types.Message):
                     days_to_subtract = days - 1
                     date_ago = date_ago - timedelta(days=days_to_subtract)
                     logger.info(f"Новая дата: {date_ago}")
-                    date_now_full = date_ago.strftime("%d.%m.%Y")
-                    date_month_year = date_ago.strftime("%m.%Y")
+                    date_now_full = date_ago.strftime("%d.%m.%Y")   # Дата для файла
+                    date_month_year = date_ago.strftime("%m.%Y")    # Дата для папки месяца
                     # Для отчета за день одна папка с текущей датой
                     report_folders = [date_now_full]
                     for report_folder in report_folders:

@@ -573,6 +573,7 @@ class MastersStatistic:
     async def process_report(self):
         await self._calc_date()             # Получение даты
         await self._get_days()              # Перебор дней месяца
+        await self._calc_salary()           # Подсчет предполагаемой зарплаты
         await self._send_answer_to_chat()   # Отправка ответа в тг
 
     # Получение даты для определения папки
@@ -612,6 +613,8 @@ class MastersStatistic:
                             "et_serv": 0,
                             "et_serv_tv": 0,
                             "all_tasks": 0,
+                            "install_internet": 0,
+                            "other_tasks": 0,
                             "days": 0,
                         }
                     self.masters[master]["et_int"] += data["et_int"]
@@ -623,7 +626,23 @@ class MastersStatistic:
                     self.masters[master]["et_serv"] += data["et_serv"]
                     self.masters[master]["et_serv_tv"] += data["et_serv_tv"]
                     self.masters[master]["all_tasks"] += data["et_int"] + data["et_tv"] + data["et_dom"] + data["et_serv"] + data["et_serv_tv"]
+                    self.masters[master]["install_internet"] += data["et_int"]
+                    self.masters[master]["other_tasks"] += data["et_tv"] + data["et_dom"] + data["et_serv"] + data["et_serv_tv"]
                     self.masters[master]["days"] += 1
+
+    # Подсчет предполагаемой зарплаты по очень средним параметрам
+    async def _calc_salary(self):
+        for master_name, master_data in self.masters.items():
+            master_data["salary"] = 0
+            avr_int_num = master_data["install_internet"] / master_data["days"]
+            avr_oth_task = master_data["other_tasks"] / master_data["days"]
+            if master_data["days"] > 15: # Если есть доп смены посчитаем от среднего
+                master_data["salary"] = 15 * (avr_int_num * 1250) + 15 * (avr_oth_task * 1000)
+                master_data["salary"] += (master_data["days"] - 15) * (avr_int_num * 1670)     # Доп дни
+                master_data["salary"] += (master_data["days"] - 15) * (avr_oth_task * 1670)    # Доп дни
+            else:   # Если нет дополнительных смен, считаем от фактического, а не от среднего
+                master_data["salary"] = master_data["install_internet"] * 1250
+                master_data["salary"] += master_data["other_tasks"] * 1000
 
     # # Отправка ответа в тг
     # async def _send_answer_to_chat(self):
@@ -666,6 +685,7 @@ class MastersStatistic:
                       f"Всего выполнено: {master_data["all_tasks"]} \n"
                       f"Отработано смен: {master_data["days"]} \n"
                       f"Среднее за смену: {round(master_data["all_tasks"]/master_data["days"], 1)} \n"
+                      f"...: {round(master_data["salary"])} \n"
                       )
 
             await self.message.answer(answer)

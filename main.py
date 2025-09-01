@@ -284,6 +284,7 @@ async def get_month_dates():
         if current_date.month == target_date.month:
             dates.append(current_date.strftime('%d.%m.%Y'))
         current_date += timedelta(days=1)
+    print(f"dates {dates}")
     return dates
 
 # Определим ТО по пользователю или группе

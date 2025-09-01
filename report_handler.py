@@ -577,9 +577,10 @@ class MastersStatistic:
 
     # Получение даты для определения папки
     async def _calc_date(self):
-        date_now = datetime.now()
-        logger.info(f"MastersStatistic Текущая дата: {date_now}")
-        self.date_month_year = date_now.strftime("%m.%Y")
+        today = datetime.now()
+        target_date = today - timedelta(days=config.LAST_MONTH_DAYS_AGO)
+        logger.info(f"Текущая дата: {today}")
+        self.date_month_year = target_date.strftime("%m.%Y")
 
     # Перебор дней месяца
     async def _get_days(self):
@@ -698,9 +699,10 @@ class OneMasterStatistic:
 
     # Получение даты для определения папки
     async def _calc_date(self):
-        date_now = datetime.now()
-        logger.info(f"Текущая дата: {date_now}")
-        self.date_month_year = date_now.strftime("%m.%Y")
+        today = datetime.now()
+        target_date = today - timedelta(days=config.LAST_MONTH_DAYS_AGO)
+        logger.info(f"Текущая дата: {today}")
+        self.date_month_year = target_date.strftime("%m.%Y")
 
     # Обработка всех файлов в цикле то и дней месяца
     async def _read_jsons(self):

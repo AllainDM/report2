@@ -481,7 +481,7 @@ class ReportCalc:
             return
 
         # Формируем сообщение для бота
-        lines = ["**📊 Дневная статистика по подразделениям:**\n"]
+        lines = [f"**📊 Дневная статистика по подразделениям за {self.date_full}:**\n"]
         for t_o, master_count, total_requests, average_requests in stats:
             line = (f"**Подразделение:** {t_o}\n"
                     f"**Количество мастеров:** {master_count}\n"
@@ -743,23 +743,26 @@ class OneMasterStatistic:
                         self.masters[self.one_master]["all_tasks"] += data["et_int"] + data["et_tv"] + data["et_dom"] + data["et_serv"] + data["et_serv_tv"]
                         self.masters[self.one_master]["days"] += 1
                 except FileNotFoundError:
-                    ...
+                    ...     # Отсутствие отчета это нормально, ибо перебираем каждый день месяца
 
     # Отправка ответа в тг
     async def _send_answer_to_chat(self):
-        answer = (f"{self.one_master} \n\n"
-                  # f"Выполнено: \n"
-                  f"Интернет {self.masters[self.one_master]["et_int"]} "
-                  f"({self.masters[self.one_master]["et_int_pri"]}), \n"
-                  f"ТВ {self.masters[self.one_master]["et_tv"]}({self.masters[self.one_master]["et_tv_pri"]}), \n"
-                  f"Домофон {self.masters[self.one_master]["et_dom"]}({self.masters[self.one_master]["et_dom_pri"]}), \n"
-                  f"Сервис {self.masters[self.one_master]["et_serv"]}, \n"
-                  f"Сервис ТВ {self.masters[self.one_master]["et_serv_tv"]} \n\n"
-                  f"Всего выполнено: {self.masters[self.one_master]["all_tasks"]} \n"
-                  f"Отработано смен: {self.masters[self.one_master]["days"]} \n"
-                  f"Среднее за смену: {round(self.masters[self.one_master]["all_tasks"] / self.masters[self.one_master]["days"], 1)} \n"
-                  )
-        await self.message.answer(answer)
+        if self.one_master and self.masters[self.one_master]["days"] > 0:
+            answer = (f"{self.one_master} \n\n"
+                      # f"Выполнено: \n"
+                      f"Интернет {self.masters[self.one_master]["et_int"]} "
+                      f"({self.masters[self.one_master]["et_int_pri"]}), \n"
+                      f"ТВ {self.masters[self.one_master]["et_tv"]}({self.masters[self.one_master]["et_tv_pri"]}), \n"
+                      f"Домофон {self.masters[self.one_master]["et_dom"]}({self.masters[self.one_master]["et_dom_pri"]}), \n"
+                      f"Сервис {self.masters[self.one_master]["et_serv"]}, \n"
+                      f"Сервис ТВ {self.masters[self.one_master]["et_serv_tv"]} \n\n"
+                      f"Всего выполнено: {self.masters[self.one_master]["all_tasks"]} \n"
+                      f"Отработано смен: {self.masters[self.one_master]["days"]} \n"
+                      f"Среднее за смену: {round(self.masters[self.one_master]["all_tasks"] / self.masters[self.one_master]["days"], 1)} \n"
+                      )
+            await self.message.answer(answer)
+        else:
+            await self.message.answer(f"Мастер не обнаружен!!!")
 
 # Поиск отчетов в папке. Для вывода в тг, для сверки, после добавления или удаления отчетов.
 class SearchReportsInFolder:

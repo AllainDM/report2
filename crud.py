@@ -174,14 +174,15 @@ def get_average_day_statistic_for_all_to(date_full: str):
         connection.close()
 
 
-def delete_master_day_report(full_date: str, master: str, t_o: str):
+def delete_master_day_report(date_full: str, master: str, t_o: str):
     """
     Удаляет запись из таблицы master_day по дате и имени мастера.
-    :param full_date: Полная дата (например, '05.09.2025').
+    :param date_full: Полная дата (например, '05.09.2025').
     :param master: Имя мастера.
     :param t_o: Терр отделение где необходимо удалить отчет.
     :return: True, если удаление прошло успешно, иначе False.
     """
+    print(f'Запрос на удаление: "{master}", "{date_full}", "{t_o}"')
     connection = get_sqlite_session()
     if connection is None:
         logging.debug("Ошибка: не удалось подключиться к базе данных.")
@@ -190,15 +191,15 @@ def delete_master_day_report(full_date: str, master: str, t_o: str):
     cur = connection.cursor()
     try:
         # SQL-запрос для удаления записи
-        sql_query = "DELETE FROM master_day WHERE full_date = ? AND master = ? AND t_o = ?"
+        sql_query = "DELETE FROM master_day WHERE date_full = ? AND master = ? AND t_o = ?"
 
         # Выполняем запрос с параметрами
-        cur.execute(sql_query, (full_date, master, t_o))
+        cur.execute(sql_query, (date_full, master, t_o))
 
         # Фиксируем изменения в базе данных
         connection.commit()
 
-        logging.info(f"Запись для мастера '{master}' для {t_o} на дату '{full_date}' успешно удалена.")
+        logging.info(f"Запись для мастера '{master}' для {t_o} на дату '{date_full}' успешно удалена.")
         return True
 
     except Exception as ex:

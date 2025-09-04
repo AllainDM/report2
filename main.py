@@ -135,7 +135,7 @@ async def del_file(message: types.Message):
                 await message.answer(f"Файл /{t_o}/{month_year}/{full_date}/{master} удален")
             except OSError as error:
                 await message.answer(f"Файл /{t_o}/{month_year}/{full_date}/{master} не найден!!!")
-            if crud.delete_master_day_report(full_date=full_date, master=master):
+            if crud.delete_master_day_report(full_date=full_date, master=master, t_o=t_o):
                 await message.answer(f"Запись в БД мастера {master} за {full_date} удалена")
             else:
                 await message.answer(f"Запись в БД мастера {master} за {full_date} не найдена!!!")

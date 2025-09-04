@@ -135,6 +135,10 @@ async def del_file(message: types.Message):
                 await message.answer(f"Файл /{t_o}/{month_year}/{full_date}/{master} удален")
             except OSError as error:
                 await message.answer(f"Файл /{t_o}/{month_year}/{full_date}/{master} не найден!!!")
+            if crud.delete_master_day_report(full_date=full_date, master=master):
+                await message.answer(f"Запись в БД мастера {master} за {full_date} удалена")
+            else:
+                await message.answer(f"Запись в БД мастера {master} за {full_date} не найдена!!!")
             # Выведем имена мастеров для сверки.
             # Обновим список файлов в папке.
             list_masters = SearchReportsInFolder(message=message, t_o=t_o)
@@ -144,7 +148,7 @@ async def del_file(message: types.Message):
                 rep_masters += f'{master} \n'
             await message.answer(rep_masters)
         else:
-            await message.answer(f"Файл не указан или указан не верно")
+            await message.answer(f"Файл не указан, указан не верно или папка пуста.")
     else:
         await message.answer("Неа")
 
@@ -257,16 +261,20 @@ async def get_last_full_week():
     today = datetime.now()
     # Определяем день недели (Понедельник=0, Вторник=1, ..., Воскресенье=6)
     today_weekday = today.weekday()
+    print(f"today_weekday {today_weekday}")
     # Вычисляем количество дней, чтобы вернуться к прошлому понедельнику
     days_to_subtract = today_weekday + 7
+    print(f"days_to_subtract {days_to_subtract}")
     # Находим дату прошлого понедельника
     last_monday = today - timedelta(days=days_to_subtract)
+    print(f"last_monday {last_monday}")
     # Создаём список из 7 дат, начиная с прошлого понедельника
     dates = []
     for i in range(7):
         current_date = last_monday + timedelta(days=i)
         dates.append(current_date.strftime('%d.%m.%Y'))
 
+    print(f"dates {dates}")
     return dates
 
 # Составление списка дат для статистики мастеров за месяц

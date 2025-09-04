@@ -172,3 +172,39 @@ def get_average_day_statistic_for_all_to(date_full: str):
     finally:
         cur.close()
         connection.close()
+
+
+def delete_master_day_report(full_date: str, master: str):
+    """
+    Удаляет запись из таблицы master_day по дате и имени мастера.
+    :param full_date: Полная дата (например, '2023-10-27').
+    :param master: Имя мастера.
+    :return: True, если удаление прошло успешно, иначе False.
+    """
+    connection = get_sqlite_session()
+    if connection is None:
+        logging.debug("Ошибка: не удалось подключиться к базе данных.")
+        return False
+
+    cur = connection.cursor()
+    try:
+        # SQL-запрос для удаления записи
+        sql_query = "DELETE FROM master_day WHERE full_date = ? AND master = ?"
+
+        # Выполняем запрос с параметрами
+        cur.execute(sql_query, (full_date, master))
+
+        # Фиксируем изменения в базе данных
+        connection.commit()
+
+        logging.info(f"Запись для мастера '{master}' на дату '{full_date}' успешно удалена.")
+        return True
+
+    except Exception as ex:
+        logging.error(f"Ошибка при удалении записи: {ex}")
+        return False
+
+    finally:
+        cur.close()
+        connection.close()
+

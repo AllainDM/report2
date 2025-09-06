@@ -500,11 +500,10 @@ class ReportCalc:
 
 # Сбор недельной статистики
 class ReportWeek:
-    def __init__(self, message, t_o, week, date_month_year):
+    def __init__(self, message, t_o, week):
         self.message = message              # Сообщение из ТГ
         self.t_o = t_o                      # Территориальное отделение
-        self.week = week                        # 7 дат прошлой недели
-        self.date_month_year = date_month_year  # Имя папки(месяц/год) с отчетами за месяц
+        self.week = week                    # 7 дат прошлой недели
         self.to_save = {
             "et_int": 0,
             "et_int_pri": 0,

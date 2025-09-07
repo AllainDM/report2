@@ -149,7 +149,6 @@ def get_average_day_statistic_for_all_to(date_full: str):
 
     cur = connection.cursor()
     try:
-
         cur.execute("""
             SELECT
                 t_o,
@@ -183,7 +182,6 @@ def delete_master_day_report(date_full: str, master: str, t_o: str):
     :param t_o: Терр отделение где необходимо удалить отчет.
     :return: True, если удаление прошло успешно, иначе False.
     """
-    print(f'Запрос на удаление: "{master}", "{date_full}", "{t_o}"')
     connection = get_sqlite_session()
     if connection is None:
         logging.debug("Ошибка: не удалось подключиться к базе данных.")
@@ -211,3 +209,35 @@ def delete_master_day_report(date_full: str, master: str, t_o: str):
         cur.close()
         connection.close()
 
+# Поиск всех отчетов за один день для одного ТО.
+def get_reports_for_day(date_full: str, t_o: str):
+    connection = get_sqlite_session()
+    if connection is None:
+        logging.error("Ошибка: не удалось подключиться к базе данных.")
+        return False
+
+    cur = connection.cursor()
+    try:
+        # SQL-запрос
+        sql_query = """
+            SELECT 
+                * 
+            FROM 
+                master_day 
+            WHERE 
+                date_full = ? AND t_o = ?;
+        """
+
+        # Выполняем запрос с параметрами
+        cur.execute(sql_query, (date_full, t_o,))
+
+        results = cur.fetchall()
+        return results
+
+    except Exception as ex:
+        logging.error("Ошибка при получении записей по дате и ТО", ex)
+        return False
+
+    finally:
+        cur.close()
+        connection.close()

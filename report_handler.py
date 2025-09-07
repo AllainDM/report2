@@ -523,29 +523,20 @@ class ReportWeek:
     # Перебор дней недели
     async def _get_days(self):
         for day in self.week:
-            await self._get_files(day)
+            day_reports = crud.get_reports_for_day(date_full=day, t_o=self.t_o)
+            await self._calc_day(day_reports)
 
-    # Получение всех файлов в папке одного дня
-    async def _get_files(self, day):
-        if os.path.exists(f"files/{self.t_o}/{self.date_month_year}/{day}"):
-            files = os.listdir(f"files/{self.t_o}/{self.date_month_year}/{day}")
-            await self._read_jsons(files, day)
-
-    # Обработка файлов одного дня
-    async def _read_jsons(self, files, day):
-        for file in files:
-            if file[-4:] == "json":
-                with open(f'files/{self.t_o}/{self.date_month_year}/{day}/{file}', 'r',
-                          encoding='utf-8') as outfile:
-                    data = json.loads(outfile.read())
-                    self.to_save["et_int"] += data["et_int"]
-                    self.to_save["et_int_pri"] += data["et_int_pri"]
-                    self.to_save["et_tv"] += data["et_tv"]
-                    self.to_save["et_tv_pri"] += data["et_tv_pri"]
-                    self.to_save["et_dom"] += data["et_dom"]
-                    self.to_save["et_dom_pri"] += data["et_dom_pri"]
-                    self.to_save["et_serv"] += data["et_serv"]
-                    self.to_save["et_serv_tv"] += data["et_serv_tv"]
+    # Сложим все отчеты в рамках одного дня
+    async def _calc_day(self, day_reports):
+        for report in day_reports:
+            self.to_save["et_int"] += report["et_int"]
+            self.to_save["et_int_pri"] += report["et_int_pri"]
+            self.to_save["et_tv"] += report["et_tv"]
+            self.to_save["et_tv_pri"] += report["et_tv_pri"]
+            self.to_save["et_dom"] += report["et_dom"]
+            self.to_save["et_dom_pri"] += report["et_dom_pri"]
+            self.to_save["et_serv"] += report["et_serv"]
+            self.to_save["et_serv_tv"] += report["et_serv_tv"]
 
     # Отправка ответа в тг
     async def _send_answer_to_chat(self):

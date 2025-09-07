@@ -277,20 +277,15 @@ async def get_last_full_week():
     today = datetime.now()
     # Определяем день недели (Понедельник=0, Вторник=1, ..., Воскресенье=6)
     today_weekday = today.weekday()
-    print(f"today_weekday {today_weekday}")
     # Вычисляем количество дней, чтобы вернуться к прошлому понедельнику
     days_to_subtract = today_weekday + 7
-    print(f"days_to_subtract {days_to_subtract}")
     # Находим дату прошлого понедельника
     last_monday = today - timedelta(days=days_to_subtract)
-    print(f"last_monday {last_monday}")
     # Создаём список из 7 дат, начиная с прошлого понедельника
     dates = []
     for i in range(7):
         current_date = last_monday + timedelta(days=i)
         dates.append(current_date.strftime('%d.%m.%Y'))
-
-    print(f"dates {dates}")
     return dates
 
 # Составление списка дат для статистики мастеров за месяц

@@ -41,7 +41,7 @@ def updates_tables():
                    "et_serv_tv integer"
                    ");")
 
-    logger.debug("Таблица day создана.")
+    logger.debug("Таблица full_day создана.")
     conn.commit()
 
     cursor.execute("create table if not exists master_day ("
@@ -62,7 +62,21 @@ def updates_tables():
                    "task_list text"
                    ");")
 
-    logger.debug("Таблица day создана.")
+    logger.debug("Таблица master_day создана.")
+    conn.commit()
+
+    cursor.execute("create table if not exists master_priv ("
+                   "rowid integer primary key autoincrement, "
+                   "t_o text not null, "
+                   "master text not null, "
+                   "data_month text, "
+                   "date_full text, "
+                   "type text, "
+                   "ls integer, "
+                   "address text"
+                   ");")
+
+    logger.debug("Таблица master_priv создана.")
     conn.commit()
 
 

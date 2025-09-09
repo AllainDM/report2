@@ -19,7 +19,7 @@ class ValidationError(Exception):
     """Исключение для ошибок валидации"""
     pass
 
-# Класс парсера отчета из сообщения мастера
+# Парсера отчета из сообщения мастера
 class ReportParser:
     def __init__(self, message, t_o, date_now_full, month_year):
         self.message = message  # Сообщение из ТГ
@@ -353,6 +353,11 @@ class ReportParser:
                   f"сервис {self.et_serv}, "
                   f"сервис ТВ {self.et_serv_tv}")
         await self.message.answer(answer)
+
+# Извлечение привлеченных из сообщения мастера
+class PaserPriv:
+    def __init__(self, message, t_o, date_now_full, month_year):
+        ...
 
 # Вывод отчета за день
 class ReportCalc:

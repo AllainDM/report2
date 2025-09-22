@@ -80,9 +80,21 @@ async def month_stats(message: types.Message):
         t_o = await get_to(message)
         if t_o:  # ТО должно быть, если пользователь уже определен, но для исключения ошибок
             await message.answer(f"📊 Подготовка статистики за месяц для {t_o}")
-            month = await get_month_dates()  # Список всех дат в месяце
-            statistic = MastersStatistic(message=message, t_o=t_o, month=month)
+            month_list = await get_month_dates()  # Список всех дат в месяце
+            statistic = MastersStatistic(message=message, t_o=t_o, month=month_list)
             await statistic.process_report()
+
+# Максимальное количество выполненных заявок по дням, для разных то и общий итог
+@dp.message(Command("top", "топы"))
+async def top_for_day(message: types.Message):
+    # Узнаем ид пользователя.
+    user_id = message.from_user.id
+    # Для получения статистики только авторизованный админ
+    if user_id in config.USERS:
+        await message.answer(f"📊 Подготовка статистики по дням за месяц.")
+        month = await get_month()
+
+
 
 # Статистика по выбранному мастеру за месяц.
 @dp.message(Command("master", "мастер"))
@@ -288,7 +300,7 @@ async def get_last_full_week():
         dates.append(current_date.strftime('%d.%m.%Y'))
     return dates
 
-# Составление списка дат для статистики мастеров за месяц
+# Составление "списка" дат для статистики мастеров за месяц
 async def get_month_dates():
     # Получаем текущую дату
     today = datetime.now().date()
@@ -307,6 +319,15 @@ async def get_month_dates():
         current_date += timedelta(days=1)
     print(f"dates {dates}")
     return dates
+
+# Получения месяца. Пример: "08.2025". Для удобного считывания с БД
+async def get_month():
+    # Получаем текущую дату
+    today = datetime.now().date()
+    # Для определения месяца вычисляем дату, которая была за указанное в конфиге дней назад.
+    target_date = today - timedelta(days=config.LAST_MONTH_DAYS_AGO)
+    month = target_date.strftime('%m.%Y')
+    return month
 
 # Определим ТО по пользователю или группе
 async def get_to(message):

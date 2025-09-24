@@ -92,7 +92,7 @@ async def top_for_day(message: types.Message):
     # Для получения статистики только авторизованный админ
     if user_id in config.USERS:
         await message.answer(f"📊 Подготовка статистики по дням за месяц.")
-        month = await get_month()
+        month_list = await get_month_dates()  # Список всех дат в месяце
 
 
 

@@ -567,44 +567,23 @@ class MastersStatistic:
     # Запуск всех методов для обработки обсчета статистики
     async def process_report(self):
         await self._get_days()              # Перебор дней месяца
-        # await self._calc_date()             # Получение даты
-        # Вариант чтения их json
-        # await self._get_days()              # Перебор дней месяца
+        # Далее по цепочке обрабатываются для каждого дня: _read_db() => _read_day()
         await self._calc_salary()           # Подсчет предполагаемой зарплаты
         await self._send_answer_to_chat()   # Отправка ответа в тг
-
-    # # Получение даты для определения папки
-    # async def _calc_date(self):
-    #     today = datetime.now()
-    #     target_date = today - timedelta(days=config.LAST_MONTH_DAYS_AGO)
-    #     logger.info(f"Текущая дата: {today}")
-    #     self.date_month_year = target_date.strftime("%m.%Y")
 
     # Перебор дней месяца
     async def _get_days(self):
         for day in self.month:
-            # await self._get_files(day)
             await self._read_db(day)
-
-    # # Получение всех файлов в папке одного дня
-    # async def _get_files(self, day):
-    #     if os.path.exists(f"files/{self.t_o}/{self.date_month_year}/{day}"):
-    #         files = os.listdir(f"files/{self.t_o}/{self.date_month_year}/{day}")
-    #         await self._read_jsons(files, day)
 
     # Получение одного дня из бд
     async def _read_db(self, day):
         day_reports = crud.get_reports_for_day(date_full=day, t_o=self.t_o)
-        print(f"day_reports {day_reports}")
         for report in day_reports:
             await self._read_day(report=report)
-        # print(f"day_reports {day_reports['et_int']}")
 
     # Обработка одного дня
     async def _read_day(self, report):
-        # print(f"reports {reports}")
-        # for report in reports:
-        #     print(f"report {report}")
         master = report["master"]
         if master not in self.masters:
             self.masters[master] = {
@@ -635,42 +614,6 @@ class MastersStatistic:
         self.masters[master]["other_tasks"] += report["et_tv"] + report["et_dom"] + report["et_serv"] + report["et_serv_tv"]
         self.masters[master]["days"] += 1
 
-    # Обработка файлов одного дня
-    async def _read_jsons(self, files, day):
-        for file in files:
-            if file[-4:] == "json":
-                master = file[:-5]
-                with open(f'files/{self.t_o}/{self.date_month_year}/{day}/{file}', 'r',
-                          encoding='utf-8') as outfile:
-                    data = json.loads(outfile.read())
-                    if master not in self.masters:
-                        self.masters[master] = {
-                            "et_int": 0,
-                            "et_int_pri": 0,
-                            "et_tv": 0,
-                            "et_tv_pri": 0,
-                            "et_dom": 0,
-                            "et_dom_pri": 0,
-                            "et_serv": 0,
-                            "et_serv_tv": 0,
-                            "all_tasks": 0,
-                            "install_internet": 0,
-                            "other_tasks": 0,
-                            "days": 0,
-                        }
-                    self.masters[master]["et_int"] += data["et_int"]
-                    self.masters[master]["et_int_pri"] += data["et_int_pri"]
-                    self.masters[master]["et_tv"] +=  data["et_tv"]
-                    self.masters[master]["et_tv_pri"] += data["et_tv_pri"]
-                    self.masters[master]["et_dom"] += data["et_dom"]
-                    self.masters[master]["et_dom_pri"] += data["et_dom_pri"]
-                    self.masters[master]["et_serv"] += data["et_serv"]
-                    self.masters[master]["et_serv_tv"] += data["et_serv_tv"]
-                    self.masters[master]["all_tasks"] += data["et_int"] + data["et_tv"] + data["et_dom"] + data["et_serv"] + data["et_serv_tv"]
-                    self.masters[master]["install_internet"] += data["et_int"]
-                    self.masters[master]["other_tasks"] += data["et_tv"] + data["et_dom"] + data["et_serv"] + data["et_serv_tv"]
-                    self.masters[master]["days"] += 1
-
     # Подсчет предполагаемой зарплаты по очень средним параметрам
     async def _calc_salary(self):
         for master_name, master_data in self.masters.items():
@@ -684,24 +627,6 @@ class MastersStatistic:
             else:   # Если нет дополнительных смен, считаем от фактического, а не от среднего
                 master_data["salary"] = master_data["install_internet"] * 1250
                 master_data["salary"] += master_data["other_tasks"] * 1000
-
-    # # Отправка ответа в тг
-    # async def _send_answer_to_chat(self):
-    #     for master in sorted_list:
-    #         answer = (f"{master} \n\n"
-    #                   # f"Выполнено: \n"
-    #                   f"Интернет {self.masters[master]["et_int"]} "
-    #                   f"({self.masters[master]["et_int_pri"]}), \n"
-    #                   f"ТВ {self.masters[master]["et_tv"]}({self.masters[master]["et_tv_pri"]}), \n"
-    #                   f"Домофон {self.masters[master]["et_dom"]}({self.masters[master]["et_dom_pri"]}), \n"
-    #                   f"Сервис {self.masters[master]["et_serv"]}, \n"
-    #                   f"Сервис ТВ {self.masters[master]["et_serv_tv"]} \n\n"
-    #                   f"Всего выполнено: {self.masters[master]["all_tasks"]} \n"
-    #                   f"Отработано смен: {self.masters[master]["days"]} \n"
-    #                   f"Среднее за смену: {round(self.masters[master]["all_tasks"]/self.masters[master]["days"], 1)} \n"
-    #                   )
-    #
-    #         await self.message.answer(answer)
 
     # Отправка ответа в тг
     async def _send_answer_to_chat(self):

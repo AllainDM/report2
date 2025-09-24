@@ -558,7 +558,7 @@ class ReportWeek:
 # Вывода статистики по всем мастерам в то
 class MastersStatistic:
     def __init__(self, message, t_o, month):
-        self.message = message              # Сообщение из ТГ
+        self.message = message              # Сообщение из ТГ, необходимо для целевого ответа
         self.t_o = t_o                      # Территориальное отделение
         self.month = month          # Даты нужного месяца
         # self.date_month_year = ""   # Имя папки(месяц/год) с отчетами за месяц
@@ -733,7 +733,7 @@ class OneMasterStatistic:
 # Поиск отчетов в папке. Для вывода в тг, для сверки, после добавления или удаления отчетов.
 class SearchReportsInFolder:
     def __init__(self, message, t_o):
-        self.message = message      # Сообщение из ТГ
+        self.message = message      # Сообщение из ТГ, необходимо для целевого ответа
         self.t_o = t_o              # Территориальное подразделение
         self.one_master = ""    # Фамилия мастера(название файла)
         self.num_reports = 0    # Количество отчетов в папке
@@ -767,12 +767,63 @@ class SearchReportsInFolder:
                 self.num_reports += 1
 
 # # Вывод статистики по топам ко количеству заявок за день.
-# class TopsForDays:
-#     def __init__(self, month):
-#         self.month = month  # Месяц, для поиска по БД
-#
-#     # Запуск всех методов для обработки
-#     async def process_report(self):
-#         ...
-#
-#     async def
+class TopsForDays:
+    def __init__(self, message, month):
+        self.message = message              # Сообщение из ТГ, необходимо для целевого ответа
+        self.month = month      # Месяц, для поиска по БД
+        self.statistic = {}     # Словарь всей статистики по всем то. (дата: то, то, то)
+
+    # Запуск всех методов для обработки
+    async def process_report(self):
+        await self._get_days()              # Перебор дней месяца
+        await self._send_answer_to_chat()   # Отправка ответа в тг
+
+    # Перебор дней месяца
+    async def _get_days(self):
+        for t_o in config.LIST_T_O:     # Переберем все ТО для раздельного поиска
+            for day in self.month:
+                if day not in self.statistic:
+                    self.statistic[day] = {}
+                await self._read_db(t_o, day)
+
+    # Получение одного дня из бд
+    async def _read_db(self, t_o, day):
+        day_reports = crud.get_reports_for_day(date_full=day, t_o=t_o)
+        await self._calc_top_for_one_to(t_o=t_o, day=day, day_reports=day_reports)
+
+    # Топ за день для одного ТО.
+    async def _calc_top_for_one_to(self, t_o, day, day_reports):
+        tops_masters = []  # Мастер кто сделал больше всех заявок.(Мастера если количество совпало)
+        top = 0
+        for report in day_reports:
+            master_all_tasks = report["et_int"] + report["et_tv"] + report["et_dom"] + report["et_serv"] + report["et_serv_tv"]
+            # Очистим список мастеров если рекорд побит.
+            if master_all_tasks > top:
+                tops_masters.clear()
+            # Добавим мастера, если количество его заявок больше или ровно последнему рекорду
+            if master_all_tasks >= top:
+                top = master_all_tasks
+                tops_masters.append(report["master"])
+        # self.statistic[day][t_o] = f"Заявок: {top}. {', '.join(tops_masters)}."
+        self.statistic[day][t_o] = [top, tops_masters]
+
+    # # Топ за день из всех ТО.
+    # async def _calc_top_for_all_to(self, t_o, day, day_reports):
+    #     tops_masters = []  # Мастер кто сделал больше всех заявок.(Мастера если количество совпало)
+    #     top = 0
+
+
+    # Отправка ответа в тг
+    async def _send_answer_to_chat(self):
+        answer = ""
+        for t_o in config.LIST_T_O:     # Переберем все ТО для раздельной статистики
+            answer += f"\n\n{t_o}\n"
+            for day in self.statistic:
+                # answer += f"{day}: {self.statistic[day][t_o]} \n"
+                # Для красивого вывода сместим если число в 1 символ
+                if self.statistic[day][t_o][0] < 10:
+                    answer += f"{day}: Заявок: {self.statistic[day][t_o][0]}.   {', '.join(self.statistic[day][t_o][1])} \n"
+                else:
+                    answer += f"{day}: Заявок: {self.statistic[day][t_o][0]}. {', '.join(self.statistic[day][t_o][1])} \n"
+
+        await self.message.answer(answer)

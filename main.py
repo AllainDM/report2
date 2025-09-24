@@ -16,6 +16,7 @@ import crud
 import config
 from report_handler import ReportCalc
 from report_handler import ReportWeek
+from report_handler import TopsForDays
 from report_handler import ReportParser
 from report_handler import MastersStatistic
 from report_handler import OneMasterStatistic
@@ -84,8 +85,9 @@ async def month_stats(message: types.Message):
             statistic = MastersStatistic(message=message, t_o=t_o, month=month_list)
             await statistic.process_report()
 
-# Максимальное количество выполненных заявок по дням, для разных то и общий итог
-@dp.message(Command("top", "топы"))
+# Максимальное количество выполненных заявок по дням, для разных то и общий итог.
+# Считает все ТО сразу.
+@dp.message(Command("top", "tops", "топы"))
 async def top_for_day(message: types.Message):
     # Узнаем ид пользователя.
     user_id = message.from_user.id
@@ -93,6 +95,8 @@ async def top_for_day(message: types.Message):
     if user_id in config.USERS:
         await message.answer(f"📊 Подготовка статистики по дням за месяц.")
         month_list = await get_month_dates()  # Список всех дат в месяце
+        statistic = TopsForDays(message=message, month=month_list)
+        await statistic.process_report()
 
 
 

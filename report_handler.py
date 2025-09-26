@@ -772,11 +772,19 @@ class TopsForDays:
         self.message = message              # Сообщение из ТГ, необходимо для целевого ответа
         self.month = month      # Месяц, для поиска по БД
         self.statistic = {}     # Словарь всей статистики по всем то. (дата: то, то, то)
+        self.better_statistic = {}  # Лучшая статистика из всех то.
+        self.answer = ""
+        self.answer_top = ""
 
     # Запуск всех методов для обработки
     async def process_report(self):
         await self._get_days()              # Перебор дней месяца
-        await self._send_answer_to_chat()   # Отправка ответа в тг
+        # Статистика по дням для каждого ТО считается по цепочке в:
+        # self._get_days() => _read_db() => _calc_top_for_one_to()
+
+        await self._answer_one_to()         # Сбор ответа по статистикам для каждого ТО
+        await self._calc_top_for_all_to()   # Подсчет лучшей статистики из всех ТО
+        # await self._send_answer_to_chat()   # Отправка ответа в тг
 
     # Перебор дней месяца
     async def _get_days(self):
@@ -807,17 +815,10 @@ class TopsForDays:
         # self.statistic[day][t_o] = f"Заявок: {top}. {', '.join(tops_masters)}."
         self.statistic[day][t_o] = [top, tops_masters]
 
-    # # Топ за день из всех ТО.
-    # async def _calc_top_for_all_to(self, t_o, day, day_reports):
-    #     tops_masters = []  # Мастер кто сделал больше всех заявок.(Мастера если количество совпало)
-    #     top = 0
-
-
-    # Отправка ответа в тг
-    async def _send_answer_to_chat(self):
-        answer = ""
+    async def _answer_one_to(self):
         for t_o in config.LIST_T_O:     # Переберем все ТО для раздельной статистики
-            answer += f"\n\n{t_o}\n"
+            # answer = ""
+            answer = f"\n\n{t_o}\n"
             for day in self.statistic:
                 # answer += f"{day}: {self.statistic[day][t_o]} \n"
                 # Для красивого вывода сместим если число в 1 символ
@@ -825,5 +826,37 @@ class TopsForDays:
                     answer += f"{day}: Заявок: {self.statistic[day][t_o][0]}.   {', '.join(self.statistic[day][t_o][1])} \n"
                 else:
                     answer += f"{day}: Заявок: {self.statistic[day][t_o][0]}. {', '.join(self.statistic[day][t_o][1])} \n"
+            await self._send_answer_to_chat(answer=answer)
 
+    # Топ за день из всех ТО.
+    async def _calc_top_for_all_to(self):
+        answer = f"\n\nПо всем ТО:\n\n"
+        for day in self.statistic:
+            tops_masters = []  # Мастер(а) кто сделал больше всех заявок.(Мастера если количество совпало).
+            top = 0  # Максимальное количество заявок.
+            top_to = []  # ТО чей мастер сделал больше всех заявок. Или список ТО если количество совпало.
+            self.better_statistic[day] = {}  # Добавим день с словарь.
+            for t_o in config.LIST_T_O:
+                if self.statistic[day][t_o][0] > top:
+                    top_to.clear()
+                    tops_masters.clear()
+                if self.statistic[day][t_o][0] >= top:
+                    top = self.statistic[day][t_o][0]
+                    top_to.append(t_o)
+                    tops_masters.append(', '.join(self.statistic[day][t_o][1]))
+            self.better_statistic[day] = [top_to, tops_masters]
+            if top < 10:
+                answer += f"{day}: Заявок: {top}.   {', '.join(top_to)}. Мастер(а):  {', '.join(tops_masters)} \n"
+            else:
+                answer += f"{day}: Заявок: {top}. {', '.join(top_to)}. Мастер(а):  {', '.join(tops_masters)} \n"
+
+        await self._send_answer_to_chat(answer=answer)
+        # print(f"self.better_statistic {self.better_statistic}")
+                
+
+
+    # Отправка ответа в тг
+    async def _send_answer_to_chat(self, answer):
         await self.message.answer(answer)
+        # await self.message.answer(self.answer)
+        # await self.message.answer(self.answer_top)

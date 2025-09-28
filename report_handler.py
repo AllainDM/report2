@@ -835,20 +835,35 @@ class TopsForDays:
             tops_masters = []  # Мастер(а) кто сделал больше всех заявок.(Мастера если количество совпало).
             top = 0  # Максимальное количество заявок.
             top_to = []  # ТО чей мастер сделал больше всех заявок. Или список ТО если количество совпало.
+            answer_list = []
             self.better_statistic[day] = {}  # Добавим день с словарь.
             for t_o in config.LIST_T_O:
                 if self.statistic[day][t_o][0] > top:
                     top_to.clear()
+                    answer_list.clear()
                     tops_masters.clear()
                 if self.statistic[day][t_o][0] >= top:
                     top = self.statistic[day][t_o][0]
                     top_to.append(t_o)
                     tops_masters.append(', '.join(self.statistic[day][t_o][1]))
             self.better_statistic[day] = [top_to, tops_masters]
-            if top < 10:
-                answer += f"{day}: Заявок: {top}.   {', '.join(top_to)}. Мастер(а):  {', '.join(tops_masters)} \n"
+            if len(top_to) > 1:
+                if top < 10:
+                    answer += f"{day}: Заявок: {top}.   {top_to[0]}. {' '*(10-len(top_to[0]))}Мастер(а):  {tops_masters[0]} \n"
+                else:
+                    answer += f"{day}: Заявок: {top}. {top_to[0]}. {' '*(10-len(top_to[0]))}Мастер(а):  {tops_masters[0]} \n"
+
+                for one in range(1, len(top_to)):
+                    if top < 10:
+                        answer += f"{' '*21} Заявок: {top}.   {top_to[one]}. {' '*(10-len(top_to[one]))}Мастер(а):  {tops_masters[one]} \n"
+                    else:
+                        answer += f"{' '*21} Заявок: {top}. {top_to[one]}. {' '*(10-len(top_to[one]))}Мастер(а):  {tops_masters[one]} \n"
+
             else:
-                answer += f"{day}: Заявок: {top}. {', '.join(top_to)}. Мастер(а):  {', '.join(tops_masters)} \n"
+                if top < 10:
+                    answer += f"{day}: Заявок: {top}.   {', '.join(top_to)}. {' '*(10-len(top_to[0]))}Мастер(а):  {', '.join(tops_masters)} \n"
+                else:
+                    answer += f"{day}: Заявок: {top}. {', '.join(top_to)}. {' '*(10-len(top_to[0]))}Мастер(а):  {', '.join(tops_masters)} \n"
 
         await self._send_answer_to_chat(answer=answer)
         # print(f"self.better_statistic {self.better_statistic}")

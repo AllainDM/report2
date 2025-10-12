@@ -112,6 +112,7 @@ def add_full_day_report(t_o: str, report: dict, data_month: str, date_full: str)
         cur.close()
         connection.close()
 
+
 # Проверка все ли ТО сделали дневной отчет.
 def check_all_full_day_report(date_full: str):
     connection = get_sqlite_session()
@@ -139,6 +140,7 @@ def check_all_full_day_report(date_full: str):
     finally:
         cur.close()
         connection.close()
+
 
 # Вычисление средней дневной статистики за день.
 def get_average_day_statistic_for_all_to(date_full: str):

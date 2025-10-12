@@ -82,8 +82,21 @@ async def month_stats(message: types.Message):
         if t_o:  # ТО должно быть, если пользователь уже определен, но для исключения ошибок
             await message.answer(f"📊 Подготовка статистики за месяц для {t_o}")
             month_list = await get_month_dates()  # Список всех дат в месяце
-            statistic = MastersStatistic(message=message, t_o=t_o, month=month_list)
+            statistic = MastersStatistic(message=message, t_o=[t_o], month=month_list)
             await statistic.process_report()
+
+# Статистика по мастерам всех ТО за месяц. !!! Внимание, это не аналог отчета за неделю.
+@dp.message(Command("month2", "месяц2"))
+async def month_stats(message: types.Message):
+    # Узнаем ид пользователя.
+    user_id = message.from_user.id
+    # Для получения общей статистики только авторизованный админ
+    if user_id in config.USERS:
+        await message.answer(f"📊 Подготовка статистики за месяц для всех ТО")
+        month_list = await get_month_dates()  # Список всех дат в месяце
+        statistic = MastersStatistic(message=message, t_o=config.LIST_T_O, month=month_list)
+        await statistic.process_report()
+
 
 # Максимальное количество выполненных заявок по дням, для разных то и общий итог.
 # Считает все ТО сразу.
@@ -227,6 +240,7 @@ async def echo_mess(message: types.Message):
         # Запрос отчета, за указанное количество дней назад
         # elif message.text.isdigit() and 1 <= int(message.text) <= config.MAX_REPORT_DAYS_AGO:
         # Проверяем, что список не пустой и первое слово является числом
+        # TODO вынести функционал отдельно
         elif text_parts and text_parts[0].isdigit() and len(text_parts) <= 2:
             days_str = text_parts[0]
             if 1 <= int(days_str) <= config.MAX_REPORT_DAYS_AGO:

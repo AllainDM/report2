@@ -578,9 +578,10 @@ class MastersStatistic:
 
     # Получение одного дня из бд
     async def _read_db(self, day):
-        day_reports = crud.get_reports_for_day(date_full=day, t_o=self.t_o)
-        for report in day_reports:
-            await self._read_day(report=report)
+        for t_o in self.t_o:
+            day_reports = crud.get_reports_for_day(date_full=day, t_o=t_o)
+            for report in day_reports:
+                await self._read_day(report=report)
 
     # Обработка одного дня
     async def _read_day(self, report):

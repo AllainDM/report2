@@ -243,3 +243,37 @@ def get_reports_for_day(date_full: str, t_o: str):
     finally:
         cur.close()
         connection.close()
+
+
+def get_master(soname: str):
+    connection = get_sqlite_session()
+    if connection is None:
+        logging.error("Ошибка: не удалось подключиться к базе данных.")
+        return False
+
+    cur = connection.cursor()
+    try:
+        # SQL-запрос
+        sql_query = """
+            SELECT 
+                *
+            FROM 
+                master
+            WHERE 
+                soname = ?;
+        """
+
+        # Выполняем запрос с параметрами
+        cur.execute(sql_query, (soname,))
+
+        results = cur.fetchall()
+        return results
+
+    except Exception as ex:
+        logging.error("Ошибка при получении мастера", ex)
+        return False
+
+    finally:
+        cur.close()
+        connection.close()
+

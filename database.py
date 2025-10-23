@@ -79,6 +79,18 @@ def updates_tables():
     logger.debug("Таблица master_priv создана.")
     conn.commit()
 
+    cursor.execute("create table if not exists master ("
+                   "rowid integer primary key autoincrement, "
+                   "fio text not null, "
+                   "soname text not null, "
+                   "schedule text, "
+                   "schedule_start_day text, "
+                   "t_o text"
+                   ");")
+
+    logger.debug("Таблица master создана.")
+    conn.commit()
+
 
     cursor.close()
 

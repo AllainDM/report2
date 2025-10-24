@@ -3,6 +3,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 
+# import pandas as pd
 from aiogram import Bot
 from aiogram.types import FSInputFile
 
@@ -659,12 +660,12 @@ class MastersStatistic:
 
 # Вывода статистики одного мастера по всем то
 class OneMasterStatistic:
-    def __init__(self, message, master_soname, month):
+    def __init__(self, message, master_soname: str, month: list[str]):
         self.message = message              # Сообщение из ТГ
-        self.master_soname = master_soname  # Фамилия мастера
-        self.master = None                  # Данные мастера из БД
-        self.schedule_list = []             # Список с расписанием рабочие выходные([1, 1, 0, 0....]).
-        self.masters = {master_soname: {
+        self.master_soname = master_soname  # Фамилия мастера для поиска в БД.
+        self.month = month                  # Даты нужного месяца. Список строк.
+
+        self.master_tasks = {
             "et_int": 0,
             "et_int_pri": 0,
             "et_tv": 0,
@@ -675,46 +676,271 @@ class OneMasterStatistic:
             "et_serv_tv": 0,
             "all_tasks": 0,
             "days": 0,
-        }}
-        self.month = month          # Даты нужного месяца
-        self.date_month_year = ""   # Имя папки(месяц/год) с отчетами за месяц
-        self.all_t_o = ["ТО Север", "ТО Юг", "ТО Запад", "ТО Восток"]
+        }
+
+        self.master = {
+            "t_o": None,
+            # "schedule": None,             # График мастера ???
+            "schedule_cycle": None,         # График мастера ???
+            "master_soname": master_soname,
+            "schedule_start_day": None,    # Начало графика
+            # "schedule_start_date": pd.to_datetime('2025-09-15'),  # Начало графика
+            "daily_reports": {},  # Словарь для хранения данных по дням: {дата: {работа_1: X, работа_2: Y, ...}}
+        }
 
     # Запуск всех методов для обработки обсчета статистики
     async def process_report(self):
-        await self._calc_date()             # Получение даты
         await self._get_master_from_db()    # Получим мастера из БД(нужен его график)
-        await self._get_schedule()          # Создадим цикл графика мастера ([1, 1, 0, 0....]).
+        await self._get_days()              # Перебор дней месяца
 
-        # await self._read_jsons()            # Перебор дней месяца
-        # await self._send_answer_to_chat()   # Отправка ответа в тг
+        await self._send_answer_to_chat()   # Отправка ответа в тг
 
-    # Получение даты для определения папки
-    async def _calc_date(self):
-        today = datetime.now()
-        target_date = today - timedelta(days=config.LAST_MONTH_DAYS_AGO)
-        logger.info(f"Текущая дата: {today}")
-        self.date_month_year = target_date.strftime("%m.%Y")
+        # await self._get_reports_for_month() # Получаем все отчеты за дни текущего месяца
+        # await self._get_schedule()          # Создадим цикл графика мастера ([1, 1, 0, 0....]).
 
     async def _get_master_from_db(self):
-        self.master = crud.get_master(soname=self.master_soname)
-        await self.message.answer(self.master[0]["soname"])
-        await self.message.answer(self.master[0]["schedule"])
-        await self.message.answer(self.master[0]["schedule_start_day"])
+        master = crud.get_master(soname=self.master_soname)
+        print(f"master {master[0]}")
+        self.master["t_o"] = master[0]["t_o"]
 
-    async def _get_schedule(self):
-        cycle_str = self.master[0]["schedule"]
-        cycle_parts = [int(p) for p in cycle_str.split('/')]
+        # self.master["schedule"] = master[3]
+        self.master["schedule_cycle"] = master[0]["schedule"]
+        self.master["schedule_start_day"] = master[0]["schedule_start_day"]
 
-        # Рабочие дни (нечетные элементы)
-        for i in range(0, len(cycle_parts), 2):
-            self.schedule_list.extend([1] * cycle_parts[i])
-            # Выходные дни (четные элементы)
-            if i + 1 < len(cycle_parts):
-                self.schedule_list.extend([0] * cycle_parts[i + 1])
+    # Перебор дней месяца
+    async def _get_days(self):
+        for day in self.month:
+            await self._read_db(day)
 
-        print(self.schedule_list)
+    # Получение одного дня из бд
+    async def _read_db(self, day):
+        for t_o in config.LIST_T_O:
+            day_reports = crud.get_reports_for_day(date_full=day, t_o=t_o)
+            for report in day_reports:
+                await self._read_day(report=report, day=day)
 
+    # Обработка одного дня
+    async def _read_day(self, report, day):
+        install_internet = report["et_int"]
+        other_tasks = report["et_tv"] + report["et_dom"] + report["et_serv"] + report["et_serv_tv"]
+
+        # Добавим в словарь, где ключ это дата.
+        if day not in self.master["daily_reports"]:
+            self.master["daily_reports"][day] = {
+                "install_internet": 0,
+                "other_tasks": 0,
+            }
+            self.master["daily_reports"][day]["install_internet"] = install_internet
+            self.master["daily_reports"][day]["other_tasks"] = other_tasks
+
+        # Добавим к общему счетчику
+        self.master_tasks["et_int"] += report["et_int"]
+        self.master_tasks["et_int_pri"] += report["et_int_pri"]
+        self.master_tasks["et_tv"] += report["et_tv"]
+        self.master_tasks["et_tv_pri"] += report["et_tv_pri"]
+        self.master_tasks["et_dom"] += report["et_dom"]
+        self.master_tasks["et_dom_pri"] += report["et_dom_pri"]
+        self.master_tasks["et_serv"] += report["et_serv"]
+        self.master_tasks["et_serv_tv"] += report["et_serv_tv"]
+        self.master_tasks["all_tasks"] += report["et_int"] + report["et_tv"] + report["et_dom"] + report["et_serv"] + \
+                                             report["et_serv_tv"]
+        self.master_tasks["days"] += 1
+
+
+
+    # Отправка ответа в тг
+    async def _send_answer_to_chat(self):
+        if self.master_tasks["days"] > 0:
+            answer = (f"{self.master_soname} \n\n"
+                      # f"Выполнено: \n"
+                      f"Интернет {self.master_tasks["et_int"]} "
+                      f"({self.master_tasks["et_int_pri"]}), \n"
+                      f"ТВ {self.master_tasks["et_tv"]}({self.master_tasks["et_tv_pri"]}), \n"
+                      f"Домофон {self.master_tasks["et_dom"]}({self.master_tasks["et_dom_pri"]}), \n"
+                      f"Сервис {self.master_tasks["et_serv"]}, \n"
+                      f"Сервис ТВ {self.master_tasks["et_serv_tv"]} \n\n"
+                      f"Всего выполнено: {self.master_tasks["all_tasks"]} \n"
+                      f"Отработано смен: {self.master_tasks["days"]} \n"
+                      f"Среднее за смену: {round(self.master_tasks["all_tasks"] / self.master_tasks["days"], 1)} \n"
+                      )
+            await self.message.answer(answer)
+        else:
+            await self.message.answer(f"Мастер не обнаружен!!!")
+
+    # async def _get_reports_for_month(self):
+    #     """Получает отчеты из БД для каждого дня текущего месяца."""
+    #     if not self.master["t_o"]:
+    #         return
+    #
+    #     print(f"📖 Чтение отчетов за {self.month[0][:7]}...")
+    #     for day_str in self.month:
+    #         # Преобразование строки обратно в дату для _read_day
+    #         day_date = datetime.strptime(day_str, '%Y-%m-%d').date()
+    #         await self._read_db(day_date)
+
+    #
+    # async def _read_db(self, day):
+    #     """Получение одного дня из бд."""
+    #     day_str = day.strftime('%Y-%m-%d')
+    #     day_reports = crud.get_reports_for_day(date_full=day_str, t_o=self.master["t_o"])
+    #
+    #     for report in day_reports:
+    #         # Передаем дату вместе с отчетом
+    #         await self._read_day(report=report, day=day)
+    #
+    # async def _read_day(self, report: Dict[str, Any], day: dt.date):
+    #     """Обработка одного дня, сохранение данных в daily_reports."""
+    #     master_name = report["master"]
+    #
+    #     if master_name != self.master["name"]:
+    #         return
+    #
+    #     day_key = day
+    #
+    #     if day_key not in self.master["daily_reports"]:
+    #         self.master["daily_reports"][day_key] = {
+    #             "install_internet": 0,
+    #             "other_tasks": 0,
+    #         }
+    #
+    #     install_internet = report.get("et_int", 0)
+    #     other_tasks = (report.get("et_tv", 0) + report.get("et_dom", 0) +
+    #                    report.get("et_serv", 0) + report.get("et_serv_tv", 0))
+    #
+    #     self.master["daily_reports"][day_key]["install_internet"] += install_internet
+    #     self.master["daily_reports"][day_key]["other_tasks"] += other_tasks
+    #
+
+    #
+    # async def _calculate_schedule(self, month_start: pd.Timestamp) -> dict:
+    #     """Генерирует расписание (дата -> статус дня) для текущего месяца."""
+    #
+    #     cycle_str = self.master["schedule_cycle"]
+    #     start_date = self.master["schedule_start_date"]
+    #
+    #     # Преобразование цикла
+    #     cycle_parts = [int(p) for p in cycle_str.split('/')]
+    #     schedule_list = []
+    #     for i in range(0, len(cycle_parts), 2):
+    #         schedule_list.extend([1] * cycle_parts[i])  # Рабочие
+    #         if i + 1 < len(cycle_parts):
+    #             schedule_list.extend([0] * cycle_parts[i + 1])  # Выходные
+    #
+    #     cycle_length = len(schedule_list)
+    #
+    #     # Генерация дат месяца
+    #     month_end = month_start + pd.offsets.MonthEnd(0)
+    #     current_month_dates = pd.date_range(month_start, month_end, freq='D')
+    #
+    #     # Расчет смещения
+    #     days_passed = (month_start.normalize() - start_date.normalize()).days
+    #     offset = days_passed % cycle_length
+    #
+    #     # Применение сдвига
+    #     full_cycle = schedule_list * (len(current_month_dates) // cycle_length + 2)  # С запасом
+    #     monthly_schedule = full_cycle[offset: offset + len(current_month_dates)]
+    #
+    #     # Формирование словаря: {дата: статус_дня}
+    #     schedule_map = {}
+    #     for date, status in zip(current_month_dates, monthly_schedule):
+    #         schedule_map[date.date()] = status
+    #
+    #     return schedule_map
+    #
+    #
+    #
+    #
+    # async def _read_day(self, report: dict, day: pd.Timestamp):
+    #     """Обработка одного дня, сохранение данных в daily_reports."""
+    #     master_name = report["master"]
+    #
+    #     # Проверяем, что это отчет нашего мастера
+    #     if master_name != self.master["name"]:
+    #         return
+    #
+    #     day_key = day.normalize().date()  # Используем дату как ключ (без времени)
+    #
+    #     if day_key not in self.master["daily_reports"]:
+    #         self.master["daily_reports"][day_key] = {
+    #             "install_internet": 0,
+    #             "other_tasks": 0,
+    #         }
+    #
+    #
+    #     # Сохраняем только те данные, которые нужны для расчета ЗП.
+    #     # Суммируем работы за этот день.
+    #     install_internet = report["et_int"]
+    #     other_tasks = report["et_tv"] + report["et_dom"] + report["et_serv"] + report["et_serv_tv"]
+    #
+    #     self.master["daily_reports"][day_key]["install_internet"] += install_internet
+    #     self.master["daily_reports"][day_key]["other_tasks"] += other_tasks
+    #
+    # async def _calc_salary(self, month_start: pd.Timestamp):
+    #     """Подсчет зарплаты по графику."""
+    #
+    #     # 1. Задаем коэффициенты для вашего графика
+    #     # Используем новые, упрощенные коэффициенты, т.к. нет логики >15 дней
+    #     # Здесь можно настроить разные ставки для рабочих и выходных дней
+    #     COEFF_INT_WORKDAY = 1250  # Установка интернета, рабочий день
+    #     COEFF_OTHER_WORKDAY = 1000  # Прочие работы, рабочий день
+    #     COEFF_INT_WEEKEND = 1670  # Установка интернета, выходной день
+    #     COEFF_OTHER_WEEKEND = 1670  # Прочие работы, выходной день
+    #
+    #     # 2. Генерируем расписание для месяца
+    #     schedule_map = self._calculate_schedule(month_start)
+    #
+    #     total_salary = 0
+    #
+    #     # 3. Перебираем все дни, за которые были отчеты
+    #     for day_date, report_data in self.master["daily_reports"].items():
+    #
+    #         # Получаем статус дня: 1 - рабочий, 0 - выходной
+    #         day_status = schedule_map.get(day_date, -1)  # -1, если день не в текущем расчете
+    #
+    #         if day_status == -1:
+    #             # Пропускаем дни, которые не входят в текущий месяц расчета
+    #             continue
+    #
+    #         install_internet = report_data["install_internet"]
+    #         other_tasks = report_data["other_tasks"]
+    #
+    #         day_salary = 0
+    #
+    #         if day_status == 1:  # Рабочий день по графику
+    #             day_salary = (install_internet * COEFF_INT_WORKDAY) + \
+    #                          (other_tasks * COEFF_OTHER_WORKDAY)
+    #
+    #         elif day_status == 0:  # Выходной день по графику
+    #             # Если мастер работал в свой выходной, применяем повышенный коэффициент
+    #             day_salary = (install_internet * COEFF_INT_WEEKEND) + \
+    #                          (other_tasks * COEFF_OTHER_WEEKEND)
+    #
+    #         total_salary += day_salary
+    #
+    #     self.master["salary"] = total_salary
+    #
+    #     return total_salary
+
+        # Поиск в БД без указания ТО
+        # self.all_t_o = ["ТО Север", "ТО Юг", "ТО Запад", "ТО Восток"]
+
+    # async def _get_schedule(self):
+    #     cycle_str = self.master[0]["schedule"]
+    #     cycle_parts = [int(p) for p in cycle_str.split('/')]    #
+    #     # Рабочие дни (нечетные элементы)
+    #     for i in range(0, len(cycle_parts), 2):
+    #         self.schedule_list.extend([1] * cycle_parts[i])
+    #         # Выходные дни (четные элементы)
+    #         if i + 1 < len(cycle_parts):
+    #             self.schedule_list.extend([0] * cycle_parts[i + 1])    #
+    #     print(self.schedule_list)
+
+    # # Получение даты для определения папки
+    # async def _calc_date(self):
+    #     today = datetime.now()
+    #     target_date = today - timedelta(days=config.LAST_MONTH_DAYS_AGO)
+    #     logger.info(f"Текущая дата: {today}")
+    #     self.date_month_year = target_date.strftime("%m.%Y")
 
     # # Обработка всех файлов в цикле то и дней месяца
     # async def _read_jsons(self):
@@ -737,24 +963,6 @@ class OneMasterStatistic:
     #             except FileNotFoundError:
     #                 ...     # Отсутствие отчета это нормально, ибо перебираем каждый день месяца
 
-    # # Отправка ответа в тг
-    # async def _send_answer_to_chat(self):
-    #     if self.one_master and self.masters[self.one_master]["days"] > 0:
-    #         answer = (f"{self.one_master} \n\n"
-    #                   # f"Выполнено: \n"
-    #                   f"Интернет {self.masters[self.one_master]["et_int"]} "
-    #                   f"({self.masters[self.one_master]["et_int_pri"]}), \n"
-    #                   f"ТВ {self.masters[self.one_master]["et_tv"]}({self.masters[self.one_master]["et_tv_pri"]}), \n"
-    #                   f"Домофон {self.masters[self.one_master]["et_dom"]}({self.masters[self.one_master]["et_dom_pri"]}), \n"
-    #                   f"Сервис {self.masters[self.one_master]["et_serv"]}, \n"
-    #                   f"Сервис ТВ {self.masters[self.one_master]["et_serv_tv"]} \n\n"
-    #                   f"Всего выполнено: {self.masters[self.one_master]["all_tasks"]} \n"
-    #                   f"Отработано смен: {self.masters[self.one_master]["days"]} \n"
-    #                   f"Среднее за смену: {round(self.masters[self.one_master]["all_tasks"] / self.masters[self.one_master]["days"], 1)} \n"
-    #                   )
-    #         await self.message.answer(answer)
-    #     else:
-    #         await self.message.answer(f"Мастер не обнаружен!!!")
 
 # Поиск отчетов в папке. Для вывода в тг, для сверки, после добавления или удаления отчетов.
 class SearchReportsInFolder:

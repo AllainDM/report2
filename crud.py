@@ -313,15 +313,27 @@ def add_master(fio: str, soname: str, schedule: str = None, schedule_start_day: 
 
         # Параметры для вставки
         params = (fio, soname, schedule, schedule_start_day, t_o)
-
         # Выполняем запрос с параметрами
         cur.execute(sql_query, params)
+
+        # Проверяем, что произошло:
+        # В SQLite:
+        # 1. Если строка ВСТАВЛЕНА (нет конфликта), cur.rowcount = 1.
+        # 2. Если строка ОБНОВЛЕНА (конфликт по FIO), cur.rowcount = 0.
+
+        if cur.rowcount == 1:
+            status = f"Мастер {fio} был добавлен в таблицу."
+        elif cur.rowcount == 0:
+            status = f"Мастер {fio} был найден в таблице. Запись обновлена."
+        else:
+            # Не должен случиться, но на всякий случай
+            status = "Произошла ошибка при добавлении мастера."
 
         # Фиксируем изменения в базе данных
         connection.commit()
 
         # Возвращаем True в случае успеха
-        return True
+        return status
 
     except Exception as ex:
         logging.error(f"Ошибка при добавлении мастера: {fio}", exc_info=True)

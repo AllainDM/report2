@@ -659,10 +659,11 @@ class MastersStatistic:
 
 # Вывода статистики одного мастера по всем то
 class OneMasterStatistic:
-    def __init__(self, message, one_master, month):
-        self.message = message      # Сообщение из ТГ
-        self.one_master = one_master
-        self.masters = {one_master: {
+    def __init__(self, message, master_soname, month):
+        self.message = message              # Сообщение из ТГ
+        self.master_soname = master_soname  # Фамилия мастера
+        self.master = None                  # Данные мастера из БД
+        self.masters = {master_soname: {
             "et_int": 0,
             "et_int_pri": 0,
             "et_tv": 0,
@@ -681,8 +682,10 @@ class OneMasterStatistic:
     # Запуск всех методов для обработки обсчета статистики
     async def process_report(self):
         await self._calc_date()             # Получение даты
-        await self._read_jsons()            # Перебор дней месяца
-        await self._send_answer_to_chat()   # Отправка ответа в тг
+        await self._get_master_from_db()    # Получим мастера из БД(нужен его график)
+
+        # await self._read_jsons()            # Перебор дней месяца
+        # await self._send_answer_to_chat()   # Отправка ответа в тг
 
     # Получение даты для определения папки
     async def _calc_date(self):
@@ -691,45 +694,49 @@ class OneMasterStatistic:
         logger.info(f"Текущая дата: {today}")
         self.date_month_year = target_date.strftime("%m.%Y")
 
-    # Обработка всех файлов в цикле то и дней месяца
-    async def _read_jsons(self):
-        for t_o in self.all_t_o:
-            for day in self.month:
-                try:
-                    with open(f'files/{t_o}/{self.date_month_year}/{day}/{self.one_master}.json', 'r',
-                              encoding='utf-8') as outfile:
-                        data = json.loads(outfile.read())
-                        self.masters[self.one_master]["et_int"] += data["et_int"]
-                        self.masters[self.one_master]["et_int_pri"] += data["et_int_pri"]
-                        self.masters[self.one_master]["et_tv"] +=  data["et_tv"]
-                        self.masters[self.one_master]["et_tv_pri"] += data["et_tv_pri"]
-                        self.masters[self.one_master]["et_dom"] += data["et_dom"]
-                        self.masters[self.one_master]["et_dom_pri"] += data["et_dom_pri"]
-                        self.masters[self.one_master]["et_serv"] += data["et_serv"]
-                        self.masters[self.one_master]["et_serv_tv"] += data["et_serv_tv"]
-                        self.masters[self.one_master]["all_tasks"] += data["et_int"] + data["et_tv"] + data["et_dom"] + data["et_serv"] + data["et_serv_tv"]
-                        self.masters[self.one_master]["days"] += 1
-                except FileNotFoundError:
-                    ...     # Отсутствие отчета это нормально, ибо перебираем каждый день месяца
+    async def _get_master_from_db(self):
+        master = crud.get_master(soname=self.master_soname)
+        await self.message.answer(master)
 
-    # Отправка ответа в тг
-    async def _send_answer_to_chat(self):
-        if self.one_master and self.masters[self.one_master]["days"] > 0:
-            answer = (f"{self.one_master} \n\n"
-                      # f"Выполнено: \n"
-                      f"Интернет {self.masters[self.one_master]["et_int"]} "
-                      f"({self.masters[self.one_master]["et_int_pri"]}), \n"
-                      f"ТВ {self.masters[self.one_master]["et_tv"]}({self.masters[self.one_master]["et_tv_pri"]}), \n"
-                      f"Домофон {self.masters[self.one_master]["et_dom"]}({self.masters[self.one_master]["et_dom_pri"]}), \n"
-                      f"Сервис {self.masters[self.one_master]["et_serv"]}, \n"
-                      f"Сервис ТВ {self.masters[self.one_master]["et_serv_tv"]} \n\n"
-                      f"Всего выполнено: {self.masters[self.one_master]["all_tasks"]} \n"
-                      f"Отработано смен: {self.masters[self.one_master]["days"]} \n"
-                      f"Среднее за смену: {round(self.masters[self.one_master]["all_tasks"] / self.masters[self.one_master]["days"], 1)} \n"
-                      )
-            await self.message.answer(answer)
-        else:
-            await self.message.answer(f"Мастер не обнаружен!!!")
+    # # Обработка всех файлов в цикле то и дней месяца
+    # async def _read_jsons(self):
+    #     for t_o in self.all_t_o:
+    #         for day in self.month:
+    #             try:
+    #                 with open(f'files/{t_o}/{self.date_month_year}/{day}/{self.one_master}.json', 'r',
+    #                           encoding='utf-8') as outfile:
+    #                     data = json.loads(outfile.read())
+    #                     self.masters[self.one_master]["et_int"] += data["et_int"]
+    #                     self.masters[self.one_master]["et_int_pri"] += data["et_int_pri"]
+    #                     self.masters[self.one_master]["et_tv"] +=  data["et_tv"]
+    #                     self.masters[self.one_master]["et_tv_pri"] += data["et_tv_pri"]
+    #                     self.masters[self.one_master]["et_dom"] += data["et_dom"]
+    #                     self.masters[self.one_master]["et_dom_pri"] += data["et_dom_pri"]
+    #                     self.masters[self.one_master]["et_serv"] += data["et_serv"]
+    #                     self.masters[self.one_master]["et_serv_tv"] += data["et_serv_tv"]
+    #                     self.masters[self.one_master]["all_tasks"] += data["et_int"] + data["et_tv"] + data["et_dom"] + data["et_serv"] + data["et_serv_tv"]
+    #                     self.masters[self.one_master]["days"] += 1
+    #             except FileNotFoundError:
+    #                 ...     # Отсутствие отчета это нормально, ибо перебираем каждый день месяца
+
+    # # Отправка ответа в тг
+    # async def _send_answer_to_chat(self):
+    #     if self.one_master and self.masters[self.one_master]["days"] > 0:
+    #         answer = (f"{self.one_master} \n\n"
+    #                   # f"Выполнено: \n"
+    #                   f"Интернет {self.masters[self.one_master]["et_int"]} "
+    #                   f"({self.masters[self.one_master]["et_int_pri"]}), \n"
+    #                   f"ТВ {self.masters[self.one_master]["et_tv"]}({self.masters[self.one_master]["et_tv_pri"]}), \n"
+    #                   f"Домофон {self.masters[self.one_master]["et_dom"]}({self.masters[self.one_master]["et_dom_pri"]}), \n"
+    #                   f"Сервис {self.masters[self.one_master]["et_serv"]}, \n"
+    #                   f"Сервис ТВ {self.masters[self.one_master]["et_serv_tv"]} \n\n"
+    #                   f"Всего выполнено: {self.masters[self.one_master]["all_tasks"]} \n"
+    #                   f"Отработано смен: {self.masters[self.one_master]["days"]} \n"
+    #                   f"Среднее за смену: {round(self.masters[self.one_master]["all_tasks"] / self.masters[self.one_master]["days"], 1)} \n"
+    #                   )
+    #         await self.message.answer(answer)
+    #     else:
+    #         await self.message.answer(f"Мастер не обнаружен!!!")
 
 # Поиск отчетов в папке. Для вывода в тг, для сверки, после добавления или удаления отчетов.
 class SearchReportsInFolder:

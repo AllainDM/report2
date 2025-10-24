@@ -245,6 +245,40 @@ def get_reports_for_day(date_full: str, t_o: str):
         connection.close()
 
 
+# Поиск всех отчетов одного мастера по всем ТО.
+def get_one_master_report_for_day(master: str, date_full: str):
+    connection = get_sqlite_session()
+    if connection is None:
+        logging.error("Ошибка: не удалось подключиться к базе данных.")
+        return False
+
+    cur = connection.cursor()
+    try:
+        # SQL-запрос
+        sql_query = """
+            SELECT 
+                * 
+            FROM 
+                master_day 
+            WHERE 
+                master = ? AND date_full = ?;
+        """
+
+        # Выполняем запрос с параметрами
+        cur.execute(sql_query, (master, date_full,))
+
+        results = cur.fetchall()    # Может быть несколько отчетов за один день в разных ТО
+        return results
+
+    except Exception as ex:
+        logging.error("Ошибка при получении записей одного мастер по дате", ex)
+        return False
+
+    finally:
+        cur.close()
+        connection.close()
+
+
 def get_master(soname: str):
     connection = get_sqlite_session()
     if connection is None:

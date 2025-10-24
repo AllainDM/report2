@@ -700,7 +700,6 @@ class OneMasterStatistic:
 
     async def _get_master_from_db(self):
         master = crud.get_master(soname=self.master_soname)
-        print(f"master {master[0]}")
         self.master["t_o"] = master[0]["t_o"]
 
         # self.master["schedule"] = master[3]
@@ -714,10 +713,9 @@ class OneMasterStatistic:
 
     # Получение одного дня из бд
     async def _read_db(self, day):
-        for t_o in config.LIST_T_O:
-            day_reports = crud.get_reports_for_day(date_full=day, t_o=t_o)
-            for report in day_reports:
-                await self._read_day(report=report, day=day)
+        day_reports = crud.get_one_master_report_for_day(master=self.master_soname, date_full=day)
+        for report in day_reports:
+            await self._read_day(report=report, day=day)
 
     # Обработка одного дня
     async def _read_day(self, report, day):

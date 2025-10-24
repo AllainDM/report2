@@ -125,7 +125,7 @@ async def month_stats(message: types.Message):
             one_master = args[1].title()
             await message.answer(f"📊 Подготовка статистики за месяц для {one_master}")
             month = await get_month_dates()  # Список всех дат в месяце
-            statistic = OneMasterStatistic(message=message, one_master=one_master, month=month)
+            statistic = OneMasterStatistic(message=message, master_soname=one_master, month=month)
             await statistic.process_report()
 
 # Добавить мастера в БД
@@ -156,7 +156,7 @@ async def add_master(message: types.Message):
         soname = args[1]
         name = args[2]
         patronymic = args[3]
-        schedule = args[4]
+        schedule = args[4].replace("*", "/").replace("\\", "/")
         schedule_start_day_str = args[5]
         fio = f"{soname} {name} {patronymic}"
 

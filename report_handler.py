@@ -663,6 +663,7 @@ class OneMasterStatistic:
         self.message = message              # Сообщение из ТГ
         self.master_soname = master_soname  # Фамилия мастера
         self.master = None                  # Данные мастера из БД
+        self.schedule_list = []             # Список с расписанием рабочие выходные([1, 1, 0, 0....]).
         self.masters = {master_soname: {
             "et_int": 0,
             "et_int_pri": 0,
@@ -683,6 +684,7 @@ class OneMasterStatistic:
     async def process_report(self):
         await self._calc_date()             # Получение даты
         await self._get_master_from_db()    # Получим мастера из БД(нужен его график)
+        await self._get_schedule()          # Создадим цикл графика мастера ([1, 1, 0, 0....]).
 
         # await self._read_jsons()            # Перебор дней месяца
         # await self._send_answer_to_chat()   # Отправка ответа в тг
@@ -695,8 +697,24 @@ class OneMasterStatistic:
         self.date_month_year = target_date.strftime("%m.%Y")
 
     async def _get_master_from_db(self):
-        master = crud.get_master(soname=self.master_soname)
-        await self.message.answer(master)
+        self.master = crud.get_master(soname=self.master_soname)
+        await self.message.answer(self.master[0]["soname"])
+        await self.message.answer(self.master[0]["schedule"])
+        await self.message.answer(self.master[0]["schedule_start_day"])
+
+    async def _get_schedule(self):
+        cycle_str = self.master[0]["schedule"]
+        cycle_parts = [int(p) for p in cycle_str.split('/')]
+
+        # Рабочие дни (нечетные элементы)
+        for i in range(0, len(cycle_parts), 2):
+            self.schedule_list.extend([1] * cycle_parts[i])
+            # Выходные дни (четные элементы)
+            if i + 1 < len(cycle_parts):
+                self.schedule_list.extend([0] * cycle_parts[i + 1])
+
+        print(self.schedule_list)
+
 
     # # Обработка всех файлов в цикле то и дней месяца
     # async def _read_jsons(self):

@@ -316,14 +316,11 @@ def add_master(fio: str, soname: str, schedule: str = None, schedule_start_day: 
         # Выполняем запрос с параметрами
         cur.execute(sql_query, params)
 
-        # Проверяем, что произошло:
-        # В SQLite:
-        # 1. Если строка ВСТАВЛЕНА (нет конфликта), cur.rowcount = 1.
-        # 2. Если строка ОБНОВЛЕНА (конфликт по FIO), cur.rowcount = 0.
-
-        if cur.rowcount == 1:
+        # Проверяем, что произошло, чтобы вернуть ответ, мастер был добавлен или изменен.
+        # TODO функционал не работает.
+        if cur.rowcount == 1 and cur.lastrowid is not None:
             status = f"Мастер {fio} был добавлен в таблицу."
-        elif cur.rowcount == 0:
+        elif cur.rowcount == 0 or cur.lastrowid is None:
             status = f"Мастер {fio} был найден в таблице. Запись обновлена."
         else:
             # Не должен случиться, но на всякий случай

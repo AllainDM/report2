@@ -1,5 +1,6 @@
 
 import os
+import re
 import shutil
 import asyncio
 import logging
@@ -126,6 +127,108 @@ async def month_stats(message: types.Message):
             month = await get_month_dates()  # Список всех дат в месяце
             statistic = OneMasterStatistic(message=message, one_master=one_master, month=month)
             await statistic.process_report()
+
+# Добавить мастера в БД
+@dp.message(Command("add_master"))
+async def add_master(message: types.Message):
+    # Получим ТО по группе или по пользователю
+    t_o = await get_to(message)
+    if t_o:  # Защита от незарегистрированных пользователей и чатов.
+        args = message.text.split()
+
+        # 1. Проверка количества аргументов.
+        # Ожидаем 6 аргументов: /add_master + Фамилия + Имя + Отчество + Расписание + Дата
+        if len(args) != 6:
+            await message.reply(
+                "Неверное количество аргументов. Ожидаемый формат:\n"
+                "<code>/add_master Фамилия Имя Отчество Расписание Дата</code>\n"
+                "Пример: <code>/add_master Куропятников Сергей Александрович 3/3 27.09.2025</code>",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        # fio = f"{args[1]} {args[2]} {args[3]}"
+        # soname = args[1]
+        # schedule = args[4]
+        # schedule_start_day = args[5]
+
+        # Извлечение аргументов
+        soname = args[1]
+        name = args[2]
+        patronymic = args[3]
+        schedule = args[4]
+        schedule_start_day_str = args[5]
+        fio = f"{soname} {name} {patronymic}"
+
+        # 2. Базовая проверка длины (например, для защиты от очень длинных строк)
+        MAX_NAME_PART_LEN = 50
+        if (len(soname) > MAX_NAME_PART_LEN or
+                len(name) > MAX_NAME_PART_LEN or
+                len(patronymic) > MAX_NAME_PART_LEN):
+            await message.reply("Фамилия, Имя или Отчество слишком длинные. Проверьте правильность ввода.")
+            return
+
+        # 3. Валидация формата расписания
+        if not re.match(r"^\d+(/\d+)?$", schedule):
+            await message.reply(
+                "Неверный формат расписания. Ожидается формат 'N/M' или 'N*N' (например, 3/3 или 5)."
+            )
+            return
+
+        # 4. Валидация формата даты
+        try:
+            # Пробуем разобрать дату. Форматы: DD.MM.YYYY, DD.MM.YY
+            # Можно использовать несколько форматов, если нужно
+            date_formats = ["%d.%m.%Y", "%d.%m.%y"]
+            schedule_start_day = None
+
+            for fmt in date_formats:
+                try:
+                    schedule_start_day = datetime.strptime(schedule_start_day_str, fmt).strftime("%Y-%m-%d")
+                    break
+                except ValueError:
+                    continue
+
+            if schedule_start_day is None:
+                raise ValueError
+
+        except ValueError:
+            await message.reply(
+                "Неверный формат даты. Ожидается формат ДД.ММ.ГГГГ или ДД.ММ.ГГ (например, 27.09.2025)."
+            )
+            return
+
+        # 5. Все проверки пройдены, добавляем мастера
+        try:
+            # Вызываем функцию crud.add_master и сохраняем возвращаемый статус
+            db_status = crud.add_master(
+                fio=fio,
+                soname=soname,
+                schedule=schedule,
+                schedule_start_day=schedule_start_day,
+                t_o=t_o
+            )
+            # await message.reply(
+
+            #     f"Мастер {fio} успешно добавлен с расписанием: {schedule}, начиная с {schedule_start_day}.")
+            # Проверяем возвращаемое значение:
+            if db_status is False:
+                # Это произойдет, если в crud.py возникла критическая ошибка и вернулось False.
+                await message.reply("Произошла критическая ошибка при работе с базой данных. Попробуйте позже.")
+            else:
+                # Если вернулась строка со статусом (был добавлен или обновлен)
+                # db_status уже содержит нужный текст: "Мастер N был добавлен..." или "Мастер N был найден. Запись обновлена."
+                await message.reply(
+                    f"✅Операция выполнена!\n\n"
+                    f"{db_status}\n"
+                    f"Расписание: {schedule}, начиная с {schedule_start_day_str}.",
+                    parse_mode=ParseMode.HTML
+                )
+
+        except Exception as e:
+            # Обработка возможных ошибок БД (например, дублирование)
+            await message.reply(f"Произошла ошибка при добавлении мастера: {e}")
+
 
 # Удаление папки с отчетами за день
 @dp.message(Command("del"))

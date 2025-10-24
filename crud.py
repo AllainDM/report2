@@ -277,3 +277,59 @@ def get_master(soname: str):
         cur.close()
         connection.close()
 
+
+def add_master(fio: str, soname: str, schedule: str = None, schedule_start_day: str = None, t_o: str = None):
+    """
+    Обновляет существующую запись или вставляет новую (Upsert) по совпадению fio и soname.
+
+    Предполагает, что пара (fio, soname) является UNIQUE KEY в таблице 'master'.
+    Это предпочтительный способ для сохранения ID записи.
+
+    :param fio: Полное имя мастера.
+    :param soname: Фамилия мастера.
+    :param schedule: График работы (необязательно).
+    :param schedule_start_day: День начала графика (необязательно).
+    :param t_o: Подразделение (необязательно).
+    :return: True в случае успешного добавления, False при ошибке.
+    """
+    connection = get_sqlite_session()
+    if connection is None:
+        logging.error("Ошибка: не удалось подключиться к базе данных.")
+        return False
+
+    cur = connection.cursor()
+    try:
+        sql_query = """
+            INSERT INTO master 
+                (fio, soname, schedule, schedule_start_day, t_o)
+            VALUES 
+                (?, ?, ?, ?, ?)
+            ON CONFLICT (fio) DO UPDATE SET 
+                soname = excluded.soname,
+                schedule = excluded.schedule,
+                schedule_start_day = excluded.schedule_start_day,
+                t_o = excluded.t_o;
+        """
+
+        # Параметры для вставки
+        params = (fio, soname, schedule, schedule_start_day, t_o)
+
+        # Выполняем запрос с параметрами
+        cur.execute(sql_query, params)
+
+        # Фиксируем изменения в базе данных
+        connection.commit()
+
+        # Возвращаем True в случае успеха
+        return True
+
+    except Exception as ex:
+        logging.error(f"Ошибка при добавлении мастера: {fio}", exc_info=True)
+        return False
+
+    finally:
+        # Закрываем курсор и соединение в любом случае
+        if cur:
+            cur.close()
+        if connection:
+            connection.close()

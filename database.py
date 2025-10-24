@@ -81,7 +81,7 @@ def updates_tables():
 
     cursor.execute("create table if not exists master ("
                    "rowid integer primary key autoincrement, "
-                   "fio text not null, "
+                   "fio text not null UNIQUE, "
                    "soname text not null, "
                    "schedule text, "
                    "schedule_start_day text, "

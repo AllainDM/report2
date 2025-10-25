@@ -697,7 +697,12 @@ class OneMasterStatistic:
             "schedule_start_day": None,    # Начало графика
             # "schedule_start_date": pd.to_datetime('2025-09-15'),  # Начало графика
             "daily_reports": {},  # Словарь для хранения данных по дням: {дата: {работа_1: X, работа_2: Y, ...}}
+            # Количество выходных и рабочих. Для сверки.
+            "workday": 0,
+            "weekend": 0,
         }
+
+        self.total_earnings = 0
 
     # Запуск всех методов для обработки обсчета статистики
     async def process_report(self):
@@ -757,6 +762,12 @@ class OneMasterStatistic:
 
             # 1 - рабочий день ('workday'), 0 - выходной ('weekend')
             status = 'workday' if status_int == 1 else 'weekend'
+            # if status_int == 1:
+            #     status = 'workday'
+            #     self.master["workday"] += 1
+            # else:
+            #     status = 'weekend'
+            #     self.master["weekend"] += 1
 
             date_str = current_date.strftime('%d.%m.%Y')
             full_schedule[date_str] = status
@@ -779,6 +790,12 @@ class OneMasterStatistic:
             # Используем get() с дефолтом, хотя _generate_full_schedule
             # должен покрыть все даты месяца.
             day_status = self.full_schedule.get(date_str, 'weekend')
+
+            # Подсчет отработанных дней
+            if day_status == 'workday':
+                self.master["workday"] += 1
+            elif day_status == 'weekend':
+                self.master["weekend"] += 1
 
             # 2. Выбираем соответствующие коэффициенты
             coeffs = self.COEFFS[day_status]
@@ -876,8 +893,15 @@ class OneMasterStatistic:
                       f"Всего выполнено: {self.master_tasks["all_tasks"]} \n"
                       f"Отработано смен: {self.master_tasks["days"]} \n"
                       f"Среднее за смену: {round(self.master_tasks["all_tasks"] / self.master_tasks["days"], 1)} \n\n"
-
                       )
+
+            # Вывод ЗП только для мастеров с графиком
+            if self.master["schedule_cycle"]:
+                answer += (f"График мастера: {self.master["schedule_cycle"]} от {self.master["schedule_start_day"]}\n"
+                           f"Отработано в выходные дни: {self.master["weekend"]}\n"
+                           f"...: {self.total_earnings}"
+                           )
+
             await self.message.answer(answer)
         else:
             await self.message.answer(f"Мастер не обнаружен!!!")

@@ -168,12 +168,12 @@ async def add_master(message: types.Message):
             await message.reply("Фамилия, Имя или Отчество слишком длинные. Проверьте правильность ввода.")
             return
 
-        # 3. Валидация формата расписания
-        if not re.match(r"^\d+(/\d+)?$", schedule):
-            await message.reply(
-                "Неверный формат расписания. Ожидается формат 'N/M' или 'N*N' (например, 3/3 или 5)."
-            )
-            return
+        # # 3. Валидация формата расписания
+        # if not re.match(r"^\d+(/\d+)?$", schedule):
+        #     await message.reply(
+        #         "Неверный формат расписания. Ожидается формат 'N/M' или 'N*N' (например, 3/3 или 5)."
+        #     )
+        #     return
 
         # 4. Валидация формата даты
         try:

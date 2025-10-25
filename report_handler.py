@@ -702,24 +702,24 @@ class OneMasterStatistic:
     # Запуск всех методов для обработки обсчета статистики
     async def process_report(self):
         await self._get_master_from_db()    # Получим мастера из БД(нужен его график)
-        await self._get_schedule()          # Создадим цикл графика мастера ([1, 1, 0, 0....]).
+        await self._get_days()              # Получаем данные о выполненных работах за месяц
 
-        await self._generate_full_schedule()    # Генерируем полный календарь (дата -> 'workday'/'weekend')
-        await self._get_days()                  # Получаем данные о выполненных работах за месяц
+        # Подсчет ЗП только для мастеров с графиком
+        if self.master["schedule_cycle"]:
+            await self._get_schedule()              # Создадим цикл графика мастера ([1, 1, 0, 0....]).
+            await self._generate_full_schedule()    # Генерируем полный календарь (дата -> 'workday'/'weekend')
+            await self._calculate_earnings()        # Считаем заработок, используя данные о работе и графике
 
-        await self._calculate_earnings()        # 5. Считаем заработок, используя данные о работе и графике
         await self._send_answer_to_chat()   # Отправка ответа в тг
-
-        # await self._get_reports_for_month() # Получаем все отчеты за дни текущего месяца
-        # await self._get_schedule()          # Создадим цикл графика мастера ([1, 1, 0, 0....]).
 
 
     async def _get_master_from_db(self):
         master = crud.get_master(soname=self.master_soname)
-        self.master["t_o"] = master[0]["t_o"]
+        if master:
+            self.master["t_o"] = master[0]["t_o"]
 
-        self.master["schedule_cycle"] = master[0]["schedule"]
-        self.master["schedule_start_day"] = master[0]["schedule_start_day"]
+            self.master["schedule_cycle"] = master[0]["schedule"]
+            self.master["schedule_start_day"] = master[0]["schedule_start_day"]
 
 
     async def _generate_full_schedule(self):
@@ -757,7 +757,6 @@ class OneMasterStatistic:
 
             # 1 - рабочий день ('workday'), 0 - выходной ('weekend')
             status = 'workday' if status_int == 1 else 'weekend'
-            print(f"status {status}")
 
             date_str = current_date.strftime('%d.%m.%Y')
             full_schedule[date_str] = status
@@ -814,18 +813,6 @@ class OneMasterStatistic:
 
     # Обработка одного дня
     async def _read_day(self, report, day):
-        install_internet = report["et_int"]
-        other_tasks = report["et_tv"] + report["et_dom"] + report["et_serv"] + report["et_serv_tv"]
-
-        # Добавим в словарь, где ключ это дата.
-        if day not in self.master["daily_reports"]:
-            self.master["daily_reports"][day] = {
-                "install_internet": 0,
-                "other_tasks": 0,
-            }
-            self.master["daily_reports"][day]["install_internet"] = install_internet
-            self.master["daily_reports"][day]["other_tasks"] = other_tasks
-
         # Добавим к общему счетчику
         self.master_tasks["et_int"] += report["et_int"]
         self.master_tasks["et_int_pri"] += report["et_int_pri"]
@@ -838,6 +825,20 @@ class OneMasterStatistic:
         self.master_tasks["all_tasks"] += report["et_int"] + report["et_tv"] + report["et_dom"] + report["et_serv"] + \
                                              report["et_serv_tv"]
         self.master_tasks["days"] += 1
+
+        # Подсчет ЗП только для мастеров с графиком
+        if self.master["schedule_cycle"]:
+            install_internet = report["et_int"]
+            other_tasks = report["et_tv"] + report["et_dom"] + report["et_serv"] + report["et_serv_tv"]
+
+            # Добавим в словарь, где ключ это дата.
+            if day not in self.master["daily_reports"]:
+                self.master["daily_reports"][day] = {
+                    "install_internet": 0,
+                    "other_tasks": 0,
+                }
+                self.master["daily_reports"][day]["install_internet"] = install_internet
+                self.master["daily_reports"][day]["other_tasks"] = other_tasks
 
     async def _get_schedule(self):
         cycle_str = self.master["schedule_cycle"]

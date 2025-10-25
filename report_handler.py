@@ -660,6 +660,17 @@ class MastersStatistic:
 
 # Вывода статистики одного мастера по всем то
 class OneMasterStatistic:
+    # --- КОНСТАНТЫ ОПЛАТЫ ---
+    COEFFS = {
+        'workday': {
+            'install_internet': 1250,  # Установка интернета, рабочий день
+            'other_tasks': 1000,  # Прочие работы, рабочий день
+        },
+        'weekend': {
+            'install_internet': 1670,  # Установка интернета, выходной день
+            'other_tasks': 1670,  # Прочие работы, выходной день
+        }
+    }
     def __init__(self, message, master_soname: str, month: list[str]):
         self.message = message              # Сообщение из ТГ
         self.master_soname = master_soname  # Фамилия мастера для поиска в БД.
@@ -680,8 +691,8 @@ class OneMasterStatistic:
 
         self.master = {
             "t_o": None,
-            # "schedule": None,             # График мастера ???
-            "schedule_cycle": None,         # График мастера ???
+            "schedule_day": None,          # График мастера, даты.
+            "schedule_cycle": None,        # График мастера, цикл: 2/2, 3/3
             "master_soname": master_soname,
             "schedule_start_day": None,    # Начало графика
             # "schedule_start_date": pd.to_datetime('2025-09-15'),  # Начало графика
@@ -691,25 +702,109 @@ class OneMasterStatistic:
     # Запуск всех методов для обработки обсчета статистики
     async def process_report(self):
         await self._get_master_from_db()    # Получим мастера из БД(нужен его график)
-        await self._get_days()              # Перебор дней месяца
+        await self._get_schedule()          # Создадим цикл графика мастера ([1, 1, 0, 0....]).
 
+        await self._generate_full_schedule()    # Генерируем полный календарь (дата -> 'workday'/'weekend')
+        await self._get_days()                  # Получаем данные о выполненных работах за месяц
+
+        await self._calculate_earnings()        # 5. Считаем заработок, используя данные о работе и графике
         await self._send_answer_to_chat()   # Отправка ответа в тг
 
         # await self._get_reports_for_month() # Получаем все отчеты за дни текущего месяца
         # await self._get_schedule()          # Создадим цикл графика мастера ([1, 1, 0, 0....]).
 
+
     async def _get_master_from_db(self):
         master = crud.get_master(soname=self.master_soname)
         self.master["t_o"] = master[0]["t_o"]
 
-        # self.master["schedule"] = master[3]
         self.master["schedule_cycle"] = master[0]["schedule"]
         self.master["schedule_start_day"] = master[0]["schedule_start_day"]
+
+
+    async def _generate_full_schedule(self):
+        """
+        Генерирует словарь 'Дата: Статус' (Статус: 'workday' или 'weekend')
+        на основе schedule_list и start_day, покрывая все нужные дни месяца.
+        """
+        start_date_str = self.master["schedule_start_day"]
+        pattern = self.schedule_list
+
+        if not pattern or not start_date_str:
+            print("Ошибка: График или стартовая дата не определены.")
+            return
+
+        # start_date = datetime.strptime(start_date_str, '%d-%m-%Y')
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+
+        # Находим самую позднюю дату в месяце, чтобы сгенерировать график с запасом
+        if self.month:
+            all_dates = [datetime.strptime(d, '%d.%m.%Y') for d in self.month]
+            end_date = max(all_dates)
+        else:
+            end_date = start_date
+
+        # Определяем количество дней для генерации (с запасом)
+        num_days = (end_date - start_date).days + len(pattern) + 1
+        print(f"num_days{num_days}")
+
+        full_schedule = {}
+        current_date = start_date
+
+        for i in range(num_days):
+            # Используем оператор % для циклического повторения графика
+            status_int = pattern[i % len(pattern)]
+
+            # 1 - рабочий день ('workday'), 0 - выходной ('weekend')
+            status = 'workday' if status_int == 1 else 'weekend'
+            print(f"status {status}")
+
+            date_str = current_date.strftime('%d.%m.%Y')
+            full_schedule[date_str] = status
+
+            current_date += timedelta(days=1)
+
+        self.full_schedule = full_schedule
+        print(full_schedule)
+
+    async def _calculate_earnings(self):
+        """
+        Рассчитывает общую сумму заработка на основе выполненной работы
+        (daily_reports) и статуса дня (full_schedule).
+        """
+        total_earnings = 0
+
+        # Итерируемся только по дням, в которые была выполнена работа
+        for date_str, work_data in self.master["daily_reports"].items():
+            # 1. Определяем статус дня по графику
+            # Используем get() с дефолтом, хотя _generate_full_schedule
+            # должен покрыть все даты месяца.
+            day_status = self.full_schedule.get(date_str, 'weekend')
+
+            # 2. Выбираем соответствующие коэффициенты
+            coeffs = self.COEFFS[day_status]
+
+            # 3. Количество выполненных работ
+            internet_installs = work_data.get('install_internet', 0)
+            other_tasks = work_data.get('other_tasks', 0)
+
+            # 4. Расчет оплаты за день (работа * коэффициент)
+            daily_earning_int = internet_installs * coeffs['install_internet']
+            daily_earning_other = other_tasks * coeffs['other_tasks']
+            daily_total = daily_earning_int + daily_earning_other
+
+            # 5. Добавляем к общей сумме
+            total_earnings += daily_total
+
+        self.total_earnings = total_earnings
+
+        print(f"Общий заработок мастера {self.master_soname}: {self.total_earnings}")
 
     # Перебор дней месяца
     async def _get_days(self):
         for day in self.month:
             await self._read_db(day)
+        print(self.master["daily_reports"])
 
     # Получение одного дня из бд
     async def _read_db(self, day):
@@ -744,7 +839,27 @@ class OneMasterStatistic:
                                              report["et_serv_tv"]
         self.master_tasks["days"] += 1
 
+    async def _get_schedule(self):
+        cycle_str = self.master["schedule_cycle"]
+        # 1. Преобразуем строку в список чисел: [2, 2, 3, 2, 2, 3]
+        cycle_parts = [int(p) for p in cycle_str.split('/')]
 
+        self.schedule_list = []  # Очистим или инициализируем список перед использованием
+
+        # Итерируемся по ЧЕТНЫМ индексам (0, 2, 4...)
+        for i in range(0, len(cycle_parts), 2):
+
+            # Рабочие дни (элементы с ЧЕТНЫМ индексом)
+            # Пример: cycle_parts[0]=2, cycle_parts[2]=3, cycle_parts[4]=2
+            self.schedule_list.extend([1] * cycle_parts[i])
+
+            # Выходные дни (элементы с НЕЧЕТНЫМ индексом)
+            # Проверяем, существует ли следующий (нечетный) элемент
+            if i + 1 < len(cycle_parts):
+                # Пример: cycle_parts[1]=2, cycle_parts[3]=2, cycle_parts[5]=3
+                self.schedule_list.extend([0] * cycle_parts[i + 1])
+
+        # print(self.schedule_list)
 
     # Отправка ответа в тг
     async def _send_answer_to_chat(self):
@@ -759,7 +874,8 @@ class OneMasterStatistic:
                       f"Сервис ТВ {self.master_tasks["et_serv_tv"]} \n\n"
                       f"Всего выполнено: {self.master_tasks["all_tasks"]} \n"
                       f"Отработано смен: {self.master_tasks["days"]} \n"
-                      f"Среднее за смену: {round(self.master_tasks["all_tasks"] / self.master_tasks["days"], 1)} \n"
+                      f"Среднее за смену: {round(self.master_tasks["all_tasks"] / self.master_tasks["days"], 1)} \n\n"
+
                       )
             await self.message.answer(answer)
         else:

@@ -1105,9 +1105,10 @@ class OneMasterStatistic:
 
 # Поиск отчетов в папке. Для вывода в тг, для сверки, после добавления или удаления отчетов.
 class SearchReportsInFolder:
-    def __init__(self, message, t_o):
+    def __init__(self, message, t_o, date_ago):
         self.message = message      # Сообщение из ТГ, необходимо для целевого ответа
         self.t_o = t_o              # Территориальное подразделение
+        self.date_ago = date_ago              # Территориальное подразделение
         self.one_master = ""    # Фамилия мастера(название файла)
         self.num_reports = 0    # Количество отчетов в папке
         self.list_masters = []   # Список фамилий мастеров чей отчет есть в папке
@@ -1120,11 +1121,11 @@ class SearchReportsInFolder:
 
     # Получение даты для определения папки
     async def _calc_date(self):
-        date_now = datetime.now()
-        date_ago = date_now - timedelta(hours=15)  # - hours здесь мы выставляем минус 15 часов
-        logger.info(f"Текущая дата: {date_now}")
-        self.date_month_year = date_ago.strftime("%m.%Y")
-        self.full_date = date_ago.strftime("%d.%m.%Y")
+        # date_now = datetime.now()
+        # date_ago = date_now - timedelta(hours=15)  # - hours здесь мы выставляем минус 15 часов
+        # logger.info(f"Текущая дата: {date_now}")
+        self.date_month_year = self.date_ago.strftime("%m.%Y")
+        self.full_date = self.date_ago.strftime("%d.%m.%Y")
 
     # Поиск всех файлов в папке
     async def _search_files(self):

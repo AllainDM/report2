@@ -620,15 +620,15 @@ class MastersStatistic:
     async def _calc_salary(self):
         for master_name, master_data in self.masters.items():
             master_data["salary"] = 0
-            avr_int_num = master_data["install_internet"] / master_data["days"]
-            avr_oth_task = master_data["other_tasks"] / master_data["days"]
-            if master_data["days"] > 15: # Если есть доп смены посчитаем от среднего
-                master_data["salary"] = 15 * (avr_int_num * 1250) + 15 * (avr_oth_task * 1000)
-                master_data["salary"] += (master_data["days"] - 15) * (avr_int_num * 1670)     # Доп дни
-                master_data["salary"] += (master_data["days"] - 15) * (avr_oth_task * 1670)    # Доп дни
-            else:   # Если нет дополнительных смен, считаем от фактического, а не от среднего
-                master_data["salary"] = master_data["install_internet"] * 1250
-                master_data["salary"] += master_data["other_tasks"] * 1000
+            # avr_int_num = master_data["install_internet"] / master_data["days"]
+            # avr_oth_task = master_data["other_tasks"] / master_data["days"]
+            # if master_data["days"] > 15: # Если есть доп смены посчитаем от среднего
+            #     master_data["salary"] = 15 * (avr_int_num * 1250) + 15 * (avr_oth_task * 1000)
+            #     master_data["salary"] += (master_data["days"] - 15) * (avr_int_num * 1670)     # Доп дни
+            #     master_data["salary"] += (master_data["days"] - 15) * (avr_oth_task * 1670)    # Доп дни
+            # else:   # Если нет дополнительных смен, считаем от фактического, а не от среднего
+            master_data["salary"] = master_data["install_internet"] * 1250
+            master_data["salary"] += master_data["other_tasks"] * 1000
 
     # Отправка ответа в тг
     async def _send_answer_to_chat(self):

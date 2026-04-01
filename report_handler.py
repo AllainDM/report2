@@ -667,8 +667,8 @@ class OneMasterStatistic:
             'other_tasks': 1000,  # Прочие работы, рабочий день
         },
         'weekend': {
-            'install_internet': 1670,  # Установка интернета, выходной день
-            'other_tasks': 1670,  # Прочие работы, выходной день
+            'install_internet': 1250,  # Установка интернета, выходной день
+            'other_tasks': 1000,  # Прочие работы, выходной день
         }
     }
     def __init__(self, message, master_soname: str, month: list[str]):

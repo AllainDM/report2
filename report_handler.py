@@ -500,9 +500,9 @@ class ReportCalc:
                     self.to_save["et_serv"] += data["et_serv"]
                     self.to_save["et_serv_tv"] += data["et_serv_tv"]
 
-                    self.to_save["etm_ko"] += data["etm_ko"]
-                    self.to_save["etm_mo"] += data["etm_mo"]
-                    self.to_save["etm_all_devices"] += data["etm_all_devices"]
+                    self.to_save["etm_ko"] += data.get("etm_ko", 0)
+                    self.to_save["etm_mo"] += data.get("etm_mo", 0)
+                    self.to_save["etm_all_devices"] += data.get("etm_all_devices", 0)
 
                     self.to_save["list_repairs"] += data["list_repairs"] # Сложим же все номера заданий
 

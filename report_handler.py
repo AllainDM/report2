@@ -38,6 +38,10 @@ class ReportParser:
         self.et_dom_pri = 0
         self.et_serv = 0
         self.et_serv_tv = 0
+
+        self.etm_ko = 0
+        self.etm_mo = 0
+        self.etm_all_devices = 0
         # self.counters = {
         #     "et_int": 0, "et_int_pri": 0, "et_tv": 0,
         #     "et_tv_pri": 0, "et_dom": 0, "et_dom_pri": 0,
@@ -247,6 +251,37 @@ class ReportParser:
                 except ValueError:
                     self.et_serv = 0
 
+        # ЕТМ
+        for num, val in enumerate(new_txt_list):
+            if val.lower() == "етм": # Берем всё, что идет в списке ПОСЛЕ слова "етм"
+                sub_list = new_txt_list[num + 1:]
+
+                # Собираем только те элементы, которые состоят из цифр
+                digits_after_etm = []
+                for item in sub_list:
+                    if item.isdigit():
+                        digits_after_etm.append(int(item))
+                    # Если встретили ключевое слово другого блока (на всякий случай) — можно прервать,
+                    # но обычно ЕТМ идет в самом конце, так что собираем цифры до конца сообщения.
+                    if len(digits_after_etm) == 3:
+                        break
+
+                # Раскладываем найденные цифры по переменным
+                try:
+                    self.etm_ko = digits_after_etm[0]
+                    self.etm_mo = digits_after_etm[1]
+                    self.etm_all_devices = digits_after_etm[2]
+                except IndexError:
+                    # Если мастер написал меньше 3-х цифр (например, забыл одну),
+                    # заполняем то, что успели найти, остальное оставляем 0
+                    self.etm_ko = digits_after_etm[0] if len(digits_after_etm) > 0 else 0
+                    self.etm_mo = digits_after_etm[1] if len(digits_after_etm) > 1 else 0
+                    self.etm_all_devices = digits_after_etm[2] if len(digits_after_etm) > 2 else 0
+
+                # Так как мы нашли ЕТМ, дальше по списку искать этот блок уже не нужно
+                break
+
+
         # Вычисление привлеченных, а так же поиск ошибки отсутствия нужного количества слов "прив" в отчете.
         # Перебор отчета, первый привлеченный идет в интернет, второй в тв, третий в домофон.
         # Флаги для правильности перебора
@@ -355,6 +390,10 @@ class ReportParser:
             "et_serv": self.et_serv,
             "et_serv_tv": self.et_serv_tv,
 
+            "etm_ko": self.etm_ko,
+            "etm_mo": self.etm_mo,
+            "etm_all_devices": self.etm_all_devices,
+
             "master": self.master,
             "list_repairs": self.list_repairs
         }
@@ -372,6 +411,10 @@ class ReportParser:
             "et_dom_pri": self.et_dom_pri,
             "et_serv": self.et_serv,
             "et_serv_tv": self.et_serv_tv,
+
+            "etm_ko": self.etm_ko,
+            "etm_mo": self.etm_mo,
+            "etm_all_devices": self.etm_all_devices,
         }
         crud.add_master_day_report(master=self.master, t_o=self.t_o, report=report,
                                    data_month=self.month_year, date_full=self.date_now_full,
@@ -385,7 +428,8 @@ class ReportParser:
                   f"ТВ {self.et_tv}({self.et_tv_pri}), "
                   f"домофон {self.et_dom}({self.et_dom_pri}), "
                   f"сервис {self.et_serv}, "
-                  f"сервис ТВ {self.et_serv_tv}")
+                  f"сервис ТВ {self.et_serv_tv}, "
+                  f"ЕТМ ко {self.etm_ko}, мо {self.etm_mo}, устройства {self.etm_all_devices}")
         await self.message.answer(answer)
 
 # Извлечение привлеченных из сообщения мастера
@@ -416,6 +460,11 @@ class ReportCalc:
             "et_dom_pri": 0,
             "et_serv": 0,
             "et_serv_tv": 0,
+
+            "etm_ko": 0,
+            "etm_mo": 0,
+            "etm_all_devices": 0,
+
             "list_repairs": [],
         }
 
@@ -450,6 +499,11 @@ class ReportCalc:
                     self.to_save["et_dom_pri"] += data["et_dom_pri"]
                     self.to_save["et_serv"] += data["et_serv"]
                     self.to_save["et_serv_tv"] += data["et_serv_tv"]
+
+                    self.to_save["etm_ko"] += data["etm_ko"]
+                    self.to_save["etm_mo"] += data["etm_mo"]
+                    self.to_save["etm_all_devices"] += data["etm_all_devices"]
+
                     self.to_save["list_repairs"] += data["list_repairs"] # Сложим же все номера заданий
 
                     self.num_rep += 1  # Добавим счетчик количества посчитанных
@@ -471,7 +525,8 @@ class ReportCalc:
                   f"ТВ {self.to_save["et_tv"]}({self.to_save["et_tv_pri"]}), "
                   f"домофон {self.to_save["et_dom"]}({self.to_save["et_dom_pri"]}), "
                   f"сервис {self.to_save["et_serv"]}, "
-                  f"сервис ТВ {self.to_save["et_serv_tv"]}")
+                  f"сервис ТВ {self.to_save["et_serv_tv"]}, "
+                  f"ЕТМ ко {self.to_save["etm_ko"]}, мо {self.to_save["etm_mo"]}, устройства {self.to_save["etm_all_devices"]}")
         await self.message.answer(answer)
 
     # Сохранение дневного отчета то в БД

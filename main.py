@@ -3,7 +3,9 @@ import os
 import re
 import shutil
 import asyncio
+import aiohttp
 import logging
+import requests
 from datetime import datetime, timedelta
 
 import xlwt
@@ -29,6 +31,9 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 BOT_API_TOKEN = os.getenv("BOT_TOKEN")
+PROXY_HOST = os.getenv("PROXY_HOST")
+PROXY_PORT = os.getenv("PROXY_PORT")
+PROXY_KEY = os.getenv("PROXY_KEY")
 
 # Инициализация бота и диспетчера
 bot = Bot(token=BOT_API_TOKEN)

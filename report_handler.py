@@ -97,15 +97,45 @@ class ReportParser:
                    replace("он:", "он"))
         self.main_txt = pre_txt.split(":")
 
+    # # Проверка наличия даты перед фамилией
+    # async def _validate_date(self):
+    #     # Берем первый элемент сообщения и удаляем лишние пробелы
+    #     first_block = self.main_txt[0].strip()
+    #     # Разбиваем первый блок по пробелу, чтобы отделить дату от текста
+    #     first_element = first_block.split(" ")
+    #     # Пытаемся преобразовать первый элемент в дату
+    #     try:
+    #         report_date = datetime.strptime(first_element[0].strip(), "%d.%m.%Y").date()
+    #
+    #         # Если это дата, сохраняем её в двух форматах
+    #         self.date_now_full = report_date.strftime("%d.%m.%Y")
+    #         self.month_year = report_date.strftime("%m.%Y")
+    #
+    #         # В случае успеха всех проверок(!) смотрим кто прислал отчет, с датой разрешено только админам
+    #         user_id = self.message.from_user.id
+    #         if user_id not in config.USERS:
+    #             raise ValidationError('Отправка отчета с датой смертным запрещена. Отчёт не сохранён.')
+    #
+    #         new_main_list = self.main_txt[0].split()
+    #         print(f"new_main_list[1] {new_main_list[1]}")
+    #         await self._validate_master(new_main_list[1])
+    #
+    #     except ValueError:
+    #         new_main_list = self.main_txt[0].split()
+    #         await self._validate_master(new_main_list[0])
+
     # Проверка наличия даты перед фамилией
     async def _validate_date(self):
-        # Берем первый элемент сообщения и удаляем лишние пробелы
-        first_block = self.main_txt[0].strip()
-        # Разбиваем первый блок по пробелу, чтобы отделить дату от текста
-        first_element = first_block.split(" ")
+        # .split() без аргументов автоматически разбивает по пробелам, табам и \n
+        # и при этом сам удаляет лишние пробелы по краям.
+        tokens = self.main_txt[0].split()
+
+        if not tokens:
+            raise ValidationError('Сообщение пустое. Отчёт не сохранён.')
+
         # Пытаемся преобразовать первый элемент в дату
         try:
-            report_date = datetime.strptime(first_element[0].strip(), "%d.%m.%Y").date()
+            report_date = datetime.strptime(tokens[0], "%d.%m.%Y").date()
 
             # Если это дата, сохраняем её в двух форматах
             self.date_now_full = report_date.strftime("%d.%m.%Y")
@@ -116,13 +146,16 @@ class ReportParser:
             if user_id not in config.USERS:
                 raise ValidationError('Отправка отчета с датой смертным запрещена. Отчёт не сохранён.')
 
-            new_main_list = self.main_txt[0].split()
-            print(f"new_main_list[1] {new_main_list[1]}")
-            await self._validate_master(new_main_list[1])
+            # Раз дата была в tokens[0], значит фамилия — это tokens[1]
+            if len(tokens) < 2:
+                raise ValidationError('После даты необходимо указать фамилию мастера.')
+
+            print(f"Master token: {tokens[1]}")
+            await self._validate_master(tokens[1])
 
         except ValueError:
-            new_main_list = self.main_txt[0].split()
-            await self._validate_master(new_main_list[0])
+            # Если первый элемент — не дата, значит это сразу фамилия (tokens[0])
+            await self._validate_master(tokens[0])
 
     # Определение мастера
     async def _validate_master(self, new_main_txt):

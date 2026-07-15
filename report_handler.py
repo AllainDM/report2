@@ -429,7 +429,7 @@ class ReportParser:
                   f"домофон {self.et_dom}({self.et_dom_pri}), "
                   f"сервис {self.et_serv}, "
                   f"сервис ТВ {self.et_serv_tv}, "
-                  f"ЕТМ ко {self.etm_ko}, мо {self.etm_mo}, устройства {self.etm_all_devices}")
+                  f"ЕТМ КО {self.etm_ko}, МО {self.etm_mo}, устройства {self.etm_all_devices}")
         await self.message.answer(answer)
 
 # Извлечение привлеченных из сообщения мастера
@@ -526,7 +526,7 @@ class ReportCalc:
                   f"домофон {self.to_save["et_dom"]}({self.to_save["et_dom_pri"]}), "
                   f"сервис {self.to_save["et_serv"]}, "
                   f"сервис ТВ {self.to_save["et_serv_tv"]}, "
-                  f"ЕТМ ко {self.to_save["etm_ko"]}, мо {self.to_save["etm_mo"]}, устройства {self.to_save["etm_all_devices"]}")
+                  f"ЕТМ КО {self.to_save["etm_ko"]}, МО {self.to_save["etm_mo"]}, устройства {self.to_save["etm_all_devices"]}")
         await self.message.answer(answer)
 
     # Сохранение дневного отчета то в БД

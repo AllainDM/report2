@@ -36,8 +36,9 @@ def add_master_day_report(master: str, t_o: str, report: dict, data_month: str, 
         cur.execute("""
             INSERT INTO master_day 
             (t_o, master, et_int, et_int_pri, et_tv, et_tv_pri, et_dom, et_dom_pri, et_serv, et_serv_tv, 
+            etm_ko, etm_mo, etm_all_devices, 
             data_month, date_full, record_time, task_list) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             t_o,
             master,
@@ -49,6 +50,9 @@ def add_master_day_report(master: str, t_o: str, report: dict, data_month: str, 
             report.get("et_dom_pri", 0),
             report.get("et_serv", 0),
             report.get("et_serv_tv", 0),
+            report.get("etm_ko", 0),
+            report.get("etm_mo", 0),
+            report.get("etm_all_devices", 0),
             data_month,
             date_full,
             record_time,
